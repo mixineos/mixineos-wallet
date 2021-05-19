@@ -64,20 +64,6 @@ const getCookieValue = (name: string) => {
 //    ?.pop() || ''
 }
 
-const getAccessToken = () => {
-    {
-        let token = localStorage.getItem("access_token");
-        if (token) {
-            return token;
-        }    
-    }
-    let token = getCookieValue('access_token');
-    if (token) {
-        localStorage.setItem("access_token", token);
-    }
-    return token;
-}
-
 class MixinEos {
     api: Api;
     jsonRpc: JsonRpc;
@@ -161,7 +147,7 @@ class MixinEos {
             method: "POST",
             headers: {
                 "Content-type": "application/json",
-                'Authorization' : 'Bearer ' + getAccessToken(),
+                'Authorization' : 'Bearer ' + await this.getAccessToken(),
                 // "X-Request-Id": v4()
             },
             body: JSON.stringify(payment),
@@ -545,6 +531,89 @@ class MixinEos {
             return "0";
         }
     }
+
+    getAccessToken = async () => {
+        let access_token = localStorage.getItem("access_token");
+        if (access_token) {
+            return access_token;
+        }
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        let user_id = urlParams.get('user_id');
+        console.log("+++++++++getAccessToken:userid", user_id);
+        if (!user_id) {
+            user_id = localStorage.getItem('user_id');
+            if (!user_id) {
+                this._requestAccessToken();
+                return "";    
+            }
+        } else {
+            localStorage.setItem('user_id', user_id);
+        }
+        try {
+            const ret = await fetch("http://192.168.1.3:9801/get_access_token", {
+                method: "POST",
+                headers: {
+                    "Content-type": "application/json"
+                },
+                body: JSON.stringify({'user_id':user_id}),
+            });
+            const r2 = await ret.json();
+            access_token = r2.data;
+            if (!access_token) {
+                //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
+                this._requestAccessToken();
+                return "";
+            }
+            // console.log("++++++got user_id:", r2.data.user_id);
+            localStorage.setItem('access_token', access_token);
+            return access_token;
+        } catch (e) {
+            console.error(e);
+            this._requestAccessToken();
+        }
+        localStorage.setItem('access_token', access_token);
+        return access_token;
+    }
+
+    _requestAccessToken = () => {
+        localStorage.setItem('user_id', "");
+        localStorage.setItem('binded_account', "");
+        localStorage.setItem("access_token", "");
+        window.location.replace(`http://192.168.1.3:9801?ref=${window.location.href}`);
+    }
+
+    getUserId = async () => {
+        const access_token = await this.getAccessToken();
+        if (!access_token) {
+            return "";
+        }
+        // console.log("+++getUserId: access_token:", access_token);
+        try {
+            const r = await fetch("https://mixin-api.zeromesh.net/me", {
+                method: "GET",
+                headers: {
+                    "Content-type": "application/json",
+                    'Authorization' : 'Bearer ' + access_token,
+                }
+            });
+            const r2 = await r.json();
+            // console.log('+++my profile:', r2);
+            if (r2.error && r2.error.code == 401) {
+                //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
+                this._requestAccessToken();
+                return "";
+            }
+            // console.log("++++++got user_id:", r2.data.user_id);
+            localStorage.setItem('user_id', r2.data.user_id);
+            return r2.data.user_id;
+        } catch (e) {
+            console.error(e);
+            this._requestAccessToken();
+        }
+        return "";
+    }
+    
 }
 
 export { MixinEos }

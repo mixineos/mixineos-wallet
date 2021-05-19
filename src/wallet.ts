@@ -45,16 +45,6 @@ const getCookieValue = (name: string) => {
 //    ?.pop() || ''
 }
 
-const getAccessToken = () => {
-    let token = localStorage.getItem("access_token");
-    if (token) {
-        return token;
-    } 
-    token = getCookieValue('access_token');
-    localStorage.setItem("access_token", token);
-    return token;
-}
-
 const replaceAll = (s: string, search: string, replace: string) => {
     return s.split(search).join(replace);
 }
@@ -68,18 +58,11 @@ const fromHexString = (hexString: string) =>
 const toHexString = (bytes: any) =>
     bytes.reduce((str: string, byte: number) => str + byte.toString(16).padStart(2, '0'), '');
 
-const _requestAccessToken = () => {
-    localStorage.setItem('user_id', "");
-    localStorage.setItem('binded_account', "");
-    localStorage.setItem("access_token", "");
-    window.location.replace(`http://192.168.1.3:9801?ref=${window.location.href}`);
-}
-
 const _getBindAccount = async () => {
     // console.log("+++++_getBindAccount:");
     let user_id = localStorage.getItem('user_id') as any;
     if (!user_id) {
-        user_id = await getUserId();
+        user_id = await mixineos.getUserId();
         localStorage.setItem('binded_account', "");
     }
     if (!user_id) {
@@ -282,8 +265,6 @@ class ScatterEOS extends Plugin {
                                 abis: signargs.abis
 //                                serializedContextFreeData: null
                             };
-                            // const access_token = getAccessToken();
-                            // await swal(access_token);
                             return await mixineos.signTransaction(signProviderArgs);
                             // return await signatureProvider.sign(signProviderArgs)
                         };
@@ -519,38 +500,6 @@ export class Index {
 // });
 // document.dispatchEvent(new CustomEvent('walletLoaded'));
 
-const getUserId = async () => {
-    const access_token = getAccessToken();
-    // console.log("+++getUserId: access_token:", access_token);
-    if (!access_token) {
-        _requestAccessToken();
-        return "";
-    }
-    try {
-        const r = await fetch("https://mixin-api.zeromesh.net/me", {
-            method: "GET",
-            headers: {
-                "Content-type": "application/json",
-                'Authorization' : 'Bearer ' + access_token,
-            }
-        });
-        const r2 = await r.json();
-        // console.log('+++my profile:', r2);
-        if (r2.error && r2.error.code == 401) {
-            //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
-            _requestAccessToken();
-            return "";
-        }
-        // console.log("++++++got user_id:", r2.data.user_id);
-        localStorage.setItem('user_id', r2.data.user_id);
-        return r2.data.user_id;
-    } catch (e) {
-        console.error(e);
-        _requestAccessToken();
-    }
-    return "";
-}
-
 const InitWallet = () => {
     if (window.wallet) {
         return;
@@ -573,7 +522,7 @@ const InitWallet = () => {
     console.log('+++++++++wallet v2 init done!!!');    
 
     (async () => {
-        await getUserId();
+        await mixineos.getUserId();
         const info = await jsonRpc.get_info();
         CHAIN_ID = info.chain_id;
         console.log("+++++++++CHAIN_ID:", CHAIN_ID);
