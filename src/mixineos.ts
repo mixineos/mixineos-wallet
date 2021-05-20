@@ -24,6 +24,7 @@ declare let window: any;
 
 const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
 const MAIN_CONTRACT = 'mixincrossss';
+const auth_server = 'https://dex.uuos.io:2053'
 
 const replaceAll = (s: string, search: string, replace: string) => {
     return s.split(search).join(replace);
@@ -142,15 +143,15 @@ class MixinEos {
         }
 
         // console.log('++++++++payment:', payment);
-    
-        const ret = await fetch("https://mixin-api.zeromesh.net/payments", {
+        const user_id = localStorage.getItem('user_id');
+        const ret = await fetch(`${auth_server}/request_payment`, {
             method: "POST",
             headers: {
                 "Content-type": "application/json",
-                'Authorization' : 'Bearer ' + await this.getAccessToken(),
+                // 'Authorization' : 'Bearer ' + await this.getAccessToken(),
                 // "X-Request-Id": v4()
             },
-            body: JSON.stringify(payment),
+            body: JSON.stringify({payment:payment, user_id:user_id}),
         });
     
         const ret2 = await ret.json();
@@ -551,7 +552,7 @@ class MixinEos {
             localStorage.setItem('user_id', user_id);
         }
         try {
-            const ret = await fetch("http://192.168.1.3:9801/get_access_token", {
+            const ret = await fetch(`${auth_server}/get_access_token`, {
                 method: "POST",
                 headers: {
                     "Content-type": "application/json"
@@ -580,7 +581,7 @@ class MixinEos {
         localStorage.setItem('user_id', "");
         localStorage.setItem('binded_account', "");
         localStorage.setItem("access_token", "");
-        window.location.replace(`http://192.168.1.3:9801?ref=${window.location.href}`);
+        window.location.replace(`${auth_server}?ref=${window.location.href}`);
     }
 
     getUserId = async () => {
