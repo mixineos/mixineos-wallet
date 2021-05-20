@@ -25,6 +25,7 @@ declare let window: any;
 const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
 const MAIN_CONTRACT = 'mixincrossss';
 const auth_server = 'https://dex.uuos.io:2053'
+// const auth_server = 'http://192.168.1.3:2053'
 
 const replaceAll = (s: string, search: string, replace: string) => {
     return s.split(search).join(replace);
@@ -158,7 +159,6 @@ class MixinEos {
         // console.log("+++++++++payment return:", ret2);
         // TODO check error details
         if (ret2.error) {
-            // request_access_token();
             throw Error(ret2.error);
         }
         return ret2.data;
@@ -533,76 +533,38 @@ class MixinEos {
         }
     }
 
-    getAccessToken = async () => {
-        let access_token = localStorage.getItem("access_token");
-        if (access_token) {
-            return access_token;
-        }
+    _requestUserId = async () => {
+        localStorage.setItem('user_id', "");
+        localStorage.setItem('binded_account', "");
+        window.location.replace(`${auth_server}?ref=${window.location.href}`);
+        await delay(3000);
+    }
+
+    getUserId = async () => {
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         let user_id = urlParams.get('user_id');
-        console.log("+++++++++getAccessToken:userid", user_id);
         if (!user_id) {
             user_id = localStorage.getItem('user_id');
             if (!user_id) {
-                this._requestAccessToken();
+                await this._requestUserId();
                 return "";    
             }
         } else {
             localStorage.setItem('user_id', user_id);
         }
+        console.log("+++++++++userid", user_id);
         try {
-            const ret = await fetch(`${auth_server}/get_access_token`, {
-                method: "POST",
-                headers: {
-                    "Content-type": "application/json"
-                },
-                body: JSON.stringify({'user_id':user_id}),
-            });
-            const r2 = await ret.json();
-            access_token = r2.data;
-            if (!access_token) {
-                //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
-                this._requestAccessToken();
-                return "";
-            }
-            // console.log("++++++got user_id:", r2.data.user_id);
-            localStorage.setItem('access_token', access_token);
-            return access_token;
-        } catch (e) {
-            console.error(e);
-            this._requestAccessToken();
-        }
-        localStorage.setItem('access_token', access_token);
-        return access_token;
-    }
-
-    _requestAccessToken = () => {
-        localStorage.setItem('user_id', "");
-        localStorage.setItem('binded_account', "");
-        localStorage.setItem("access_token", "");
-        window.location.replace(`${auth_server}?ref=${window.location.href}`);
-    }
-
-    getUserId = async () => {
-        const access_token = await this.getAccessToken();
-        if (!access_token) {
-            return "";
-        }
-        // console.log("+++getUserId: access_token:", access_token);
-        try {
-            const r = await fetch("https://mixin-api.zeromesh.net/me", {
+            const url = `${auth_server}/me?user_id=${user_id}`;
+            console.log(url);
+            const r = await fetch(url, {
                 method: "GET",
-                headers: {
-                    "Content-type": "application/json",
-                    'Authorization' : 'Bearer ' + access_token,
-                }
             });
             const r2 = await r.json();
             // console.log('+++my profile:', r2);
             if (r2.error && r2.error.code == 401) {
                 //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
-                this._requestAccessToken();
+                await this._requestUserId();
                 return "";
             }
             // console.log("++++++got user_id:", r2.data.user_id);
@@ -610,7 +572,7 @@ class MixinEos {
             return r2.data.user_id;
         } catch (e) {
             console.error(e);
-            this._requestAccessToken();
+            await this._requestUserId();
         }
         return "";
     }
