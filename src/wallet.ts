@@ -522,7 +522,7 @@ const InitWallet = () => {
     console.log('+++++++++wallet v2 init done!!!');    
 
     (async () => {
-        await mixineos.getUserId();
+        await mixineos.onLoad();
         const info = await jsonRpc.get_info();
         CHAIN_ID = info.chain_id;
         console.log("+++++++++CHAIN_ID:", CHAIN_ID);

@@ -12,6 +12,7 @@ import { sha256 as eosjs_sha256 } from 'eosjs/dist/eosjs-key-conversions';
 import { BigNumber } from "bignumber.js";
 import { v4 } from 'uuid';
 import sha256 from 'crypto-js/sha256';
+import * as CryptoJS from "crypto-js";
 
 import * as _swal from 'sweetalert';
 import { SweetAlert } from 'sweetalert/typings/core';
@@ -24,8 +25,32 @@ declare let window: any;
 
 const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
 const MAIN_CONTRACT = 'mixincrossss';
+
+const CLIENT_ID = '49b00892-6954-4826-aaec-371ca165558a';
 const auth_server = 'https://dex.uuos.io:2053'
 // const auth_server = 'http://192.168.1.3:2053'
+
+const paymentUrl = 'https://mixin-api.zeromesh.net/payments'
+// const paymentUrl = `${auth_server}/request_payment`
+
+const oauthUrl = "https://mixin-api.zeromesh.net/oauth/token"
+
+const base64URLEncode = (str: string) => {
+    return CryptoJS.enc.Base64.stringify(str)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+}
+
+const generateChallenge = () => {
+    var wordArray = CryptoJS.lib.WordArray.random(32);
+    var verifier = base64URLEncode(wordArray);
+    var challenge = base64URLEncode(CryptoJS.SHA256(wordArray));
+    window.localStorage.setItem('verifier', verifier);
+    return challenge;
+}
+
+// {"ancestorOrigins":{},"href":"https://defis.uuos.io/swap","origin":"https://defis.uuos.io","protocol":"https:","host":"defis.uuos.io","hostname":"defis.uuos.io","port":"","pathname":"/swap","search":"","hash":""}
 
 const replaceAll = (s: string, search: string, replace: string) => {
     return s.split(search).join(replace);
@@ -43,7 +68,7 @@ const fromHexString = (hexString: string) => {
 const toHexString = (bytes: any) =>
     bytes.reduce((str: string, byte: number) => str + byte.toString(16).padStart(2, '0'), '');
 
-const int_to_hex = (n: any) => {
+const int2Hex = (n: any) => {
     let x = new BigNumber(n);
     let user_id = x.toString(16);
     user_id = user_id.padStart(32, '0');
@@ -57,15 +82,6 @@ const int_to_hex = (n: any) => {
     return r;
 }
 
-const getCookieValue = (name: string) => {
-    const values = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)")
-    if (values) {
-        return values.pop();
-    }
-    return "";
-//    ?.pop() || ''
-}
-
 class MixinEos {
     api: Api;
     jsonRpc: JsonRpc;
@@ -73,8 +89,7 @@ class MixinEos {
     signers: any;
     payment_canceled: boolean;
     constructor(url: string) {
-        const signatureProvider = new JsSignatureProvider([
-        ]);
+        const signatureProvider = new JsSignatureProvider([]);
 
         this.jsonRpc = new JsonRpc(url);
         this.api = new Api({
@@ -110,10 +125,10 @@ class MixinEos {
         // console.log("++++++++get_table_rows:", r);
         let rows = r.rows.map((x: any) => {
             if (x.data) {
-                x.data.client_id = int_to_hex(x.data.client_id);
+                x.data.client_id = int2Hex(x.data.client_id);
                 return x.data;
             }
-            x.client_id = int_to_hex(x.client_id);
+            x.client_id = int2Hex(x.client_id);
             return x;
         });
         // console.log('+++rows after filter out learnfortest:', rows);
@@ -144,15 +159,14 @@ class MixinEos {
         }
 
         // console.log('++++++++payment:', payment);
-        const user_id = localStorage.getItem('user_id');
-        const ret = await fetch(`${auth_server}/request_payment`, {
+        const ret = await fetch(paymentUrl, {
             method: "POST",
             headers: {
                 "Content-type": "application/json",
-                // 'Authorization' : 'Bearer ' + await this.getAccessToken(),
+                'Authorization' : 'Bearer ' + this.getAccessToken(),
                 // "X-Request-Id": v4()
             },
-            body: JSON.stringify({payment:payment, user_id:user_id}),
+            body: JSON.stringify(payment),
         });
     
         const ret2 = await ret.json();
@@ -541,30 +555,23 @@ class MixinEos {
     }
 
     getUserId = async () => {
-        const queryString = window.location.search;
-        const urlParams = new URLSearchParams(queryString);
-        let user_id = urlParams.get('user_id');
-        if (!user_id) {
-            user_id = localStorage.getItem('user_id');
-            if (!user_id) {
-                await this._requestUserId();
-                return "";    
-            }
-        } else {
-            localStorage.setItem('user_id', user_id);
+        const access_token = await this.getAccessToken();
+        if (!access_token) {
+            return "";
         }
-        console.log("+++++++++userid", user_id);
         try {
-            const url = `${auth_server}/me?user_id=${user_id}`;
-            console.log(url);
-            const r = await fetch(url, {
+            const r = await fetch("https://mixin-api.zeromesh.net/me", {
                 method: "GET",
+                headers: {
+                    "Content-type": "application/json",
+                    'Authorization' : 'Bearer ' + access_token,
+                }
             });
             const r2 = await r.json();
             // console.log('+++my profile:', r2);
             if (r2.error && r2.error.code == 401) {
                 //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
-                await this._requestUserId();
+                this._requestAccessToken();
                 return "";
             }
             // console.log("++++++got user_id:", r2.data.user_id);
@@ -572,11 +579,61 @@ class MixinEos {
             return r2.data.user_id;
         } catch (e) {
             console.error(e);
-            await this._requestUserId();
+            this._requestAccessToken();
         }
         return "";
     }
-    
+
+    _requestAccessToken = () => {
+        this.requestAuthorization(CLIENT_ID);
+    }
+
+    requestAuthorization = (cliend_id: string) => {
+        const scope = 'PROFILE:READ';
+        const challenge = generateChallenge();
+        const url = `https://mixin-www.zeromesh.net/oauth/authorize?client_id=${cliend_id}&scope=${scope}&response_type=code&code_challenge=${challenge}`;
+        window.location.replace(url);
+    }
+
+    onAuth = async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const authorizationCode = urlParams.get('code');
+
+        var args = {
+            "client_id": CLIENT_ID,
+            "code": authorizationCode,
+            "code_verifier": localStorage.getItem("verifier")
+        };
+        const ret = await fetch(oauthUrl, {
+            method: "POST",
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify(args),
+        });
+        const ret2 = await ret.json();
+        if (ret2.error) {
+            //TODO
+            this._requestAccessToken();
+        }
+        localStorage.setItem('access_token', ret2.data.access_token);
+        window.location.replace(window.location.origin);
+    }
+
+    getAccessToken = () => {
+        const access_token = localStorage.getItem('access_token');
+        if (access_token) {
+            return access_token;
+        }
+        return this.requestAuthorization(CLIENT_ID);
+    }
+
+    onLoad = async () => {
+        if (window.location.pathname === '/auth') {
+            return await this.onAuth();
+        }
+        await this.getUserId();
+    }
 }
 
 export { MixinEos }
