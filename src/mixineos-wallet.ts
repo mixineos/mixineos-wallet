@@ -541,6 +541,6 @@ const closeAlert = ()  => {
     swal.close && swal.close();
 }
 
-InitWallet(NODE_URL, CLIENT_ID);
+// InitWallet(NODE_URL, CLIENT_ID);
 
 export { InitWallet, showAlert, closeAlert };

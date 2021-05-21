@@ -1,4 +1,4 @@
-import { InitWallet } from './wallet';
+import { InitWallet } from './mixineos-wallet';
 import { MixinEos } from './mixineos';
 
 export { InitWallet, MixinEos };
