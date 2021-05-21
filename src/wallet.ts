@@ -66,6 +66,7 @@ const _getBindAccount = async () => {
         localStorage.setItem('binded_account', "");
     }
     if (!user_id) {
+        alert("user id not found");
         throw Error('user id not found');
     }
 
@@ -519,7 +520,7 @@ const InitWallet = () => {
         console.log("++++++++++scatterLoaded", event);
     });
     // document.dispatchEvent(new CustomEvent('scatterLoaded'));
-    console.log('+++++++++wallet v2 init done!!!');    
+    console.log('+++++++++wallet v2 init done!!!');
 
     (async () => {
         await mixineos.onLoad();

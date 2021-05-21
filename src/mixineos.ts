@@ -163,12 +163,12 @@ class MixinEos {
             method: "POST",
             headers: {
                 "Content-type": "application/json",
-                'Authorization' : 'Bearer ' + this.getAccessToken(),
+                'Authorization' : 'Bearer ' + await this.getAccessToken(),
                 // "X-Request-Id": v4()
             },
             body: JSON.stringify(payment),
         });
-    
+
         const ret2 = await ret.json();
         // console.log("+++++++++payment return:", ret2);
         // TODO check error details
@@ -357,7 +357,7 @@ class MixinEos {
 
         var timeout = true;
         for (var i=0;i<60;i++) {
-            delay(2000);
+            await delay(2000);
             if (this.payment_canceled) {
                 return null;
             }
@@ -466,7 +466,7 @@ class MixinEos {
                 console.log('payment canceled');
                 throw Error('canceled');
             }
-            delay(1000);
+            await delay(1000);
         }
         if (!payment) {
             throw Error("payment request failed!");
@@ -554,7 +554,7 @@ class MixinEos {
         await delay(3000);
     }
 
-    getUserId = async () => {
+    _getUserId = async () => {
         const access_token = await this.getAccessToken();
         if (!access_token) {
             return "";
@@ -571,7 +571,7 @@ class MixinEos {
             // console.log('+++my profile:', r2);
             if (r2.error && r2.error.code == 401) {
                 //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
-                this._requestAccessToken();
+                await this._requestAccessToken();
                 return "";
             }
             // console.log("++++++got user_id:", r2.data.user_id);
@@ -579,26 +579,45 @@ class MixinEos {
             return r2.data.user_id;
         } catch (e) {
             console.error(e);
-            this._requestAccessToken();
+            await this._requestAccessToken();
         }
         return "";
     }
 
-    _requestAccessToken = () => {
-        this.requestAuthorization(CLIENT_ID);
+    getUserId = async () => {
+        if (window.location.pathname === '/auth') {
+            while(true) {
+                console.log("++++++++onAuth...");
+                await delay(1000);
+            }
+            return "";
+        }
+        return this._getUserId();
     }
 
-    requestAuthorization = (cliend_id: string) => {
+    _requestAccessToken = async () => {
+        await this.requestAuthorization(CLIENT_ID);
+    }
+
+    requestAuthorization = async (cliend_id: string) => {
+        localStorage.setItem('href_save', window.location.href);
         const scope = 'PROFILE:READ';
         const challenge = generateChallenge();
         const url = `https://mixin-www.zeromesh.net/oauth/authorize?client_id=${cliend_id}&scope=${scope}&response_type=code&code_challenge=${challenge}`;
         window.location.replace(url);
+        while (true) {
+            console.log('zzz...');
+            await delay(1000);
+        }
     }
 
     onAuth = async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const authorizationCode = urlParams.get('code');
-
+        if (!authorizationCode) {
+            console.log("+++++++=bad request");
+            return;
+        }
         var args = {
             "client_id": CLIENT_ID,
             "code": authorizationCode,
@@ -613,19 +632,31 @@ class MixinEos {
         });
         const ret2 = await ret.json();
         if (ret2.error) {
-            //TODO
-            this._requestAccessToken();
+            await this._requestAccessToken();
         }
         localStorage.setItem('access_token', ret2.data.access_token);
-        window.location.replace(window.location.origin);
+        const user_id = await this._getUserId();
+        const hrefSave = localStorage.getItem('href_save');
+        if (hrefSave) {
+            const url = new URL(hrefSave);
+            localStorage.setItem('href_save', "");
+            if (url.pathname !== '/auth') {
+                window.location.replace(hrefSave);    
+            } else {
+                window.location.replace(window.location.origin);
+            }
+        } else {
+            window.location.replace(window.location.origin);
+        }
     }
 
-    getAccessToken = () => {
+    getAccessToken = async () => {
         const access_token = localStorage.getItem('access_token');
         if (access_token) {
             return access_token;
         }
-        return this.requestAuthorization(CLIENT_ID);
+        await this.requestAuthorization(CLIENT_ID);
+        return "";
     }
 
     onLoad = async () => {
