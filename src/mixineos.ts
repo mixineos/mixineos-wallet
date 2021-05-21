@@ -587,12 +587,12 @@ class MixinEos {
     getUserId = async () => {
         if (window.location.pathname === '/auth') {
             while(true) {
-                console.log("++++++++onAuth...");
+                console.log("++++++++getUserId: onAuth...");
                 await delay(1000);
             }
             return "";
         }
-        return this._getUserId();
+        return await this._getUserId();
     }
 
     _requestAccessToken = async () => {
@@ -635,7 +635,7 @@ class MixinEos {
             await this._requestAccessToken();
         }
         localStorage.setItem('access_token', ret2.data.access_token);
-        const user_id = await this._getUserId();
+        await this._getUserId();
         const hrefSave = localStorage.getItem('href_save');
         if (hrefSave) {
             const url = new URL(hrefSave);
