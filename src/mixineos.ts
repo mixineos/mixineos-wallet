@@ -88,7 +88,8 @@ class MixinEos {
     threshold: number;
     signers: any;
     payment_canceled: boolean;
-    constructor(url: string) {
+    client_id: string;
+    constructor(url: string, client_id: string) {
         const signatureProvider = new JsSignatureProvider([]);
 
         this.jsonRpc = new JsonRpc(url);
@@ -97,6 +98,7 @@ class MixinEos {
         });
         this.threshold = 0;
         this.payment_canceled = false;
+        this.client_id = client_id;
     }
     
     requestSigners = async (): Promise<[number, Array<any>]> => {
@@ -596,14 +598,14 @@ class MixinEos {
     }
 
     _requestAccessToken = async () => {
-        await this.requestAuthorization(CLIENT_ID);
+        await this.requestAuthorization();
     }
 
-    requestAuthorization = async (cliend_id: string) => {
+    requestAuthorization = async () => {
         localStorage.setItem('href_save', window.location.href);
         const scope = 'PROFILE:READ';
         const challenge = generateChallenge();
-        const url = `https://mixin-www.zeromesh.net/oauth/authorize?client_id=${cliend_id}&scope=${scope}&response_type=code&code_challenge=${challenge}`;
+        const url = `https://mixin-www.zeromesh.net/oauth/authorize?client_id=${this.client_id}&scope=${scope}&response_type=code&code_challenge=${challenge}`;
         window.location.replace(url);
         while (true) {
             console.log('zzz...');
@@ -619,7 +621,7 @@ class MixinEos {
             return;
         }
         var args = {
-            "client_id": CLIENT_ID,
+            "client_id": this.client_id,
             "code": authorizationCode,
             "code_verifier": localStorage.getItem("verifier")
         };
@@ -655,7 +657,7 @@ class MixinEos {
         if (access_token) {
             return access_token;
         }
-        await this.requestAuthorization(CLIENT_ID);
+        await this.requestAuthorization();
         return "";
     }
 

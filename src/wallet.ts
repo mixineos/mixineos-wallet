@@ -10,11 +10,12 @@ const swal: SweetAlert = _swal as any;
 
 import { MixinEos } from "./mixineos"
 
-// import Swal from 'sweetalert2';
+const CLIENT_ID = '49b00892-6954-4826-aaec-371ca165558a';
+const NODE_URL = 'https://api.eosn.io';
 
 let CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906'
 let jsonRpc = new JsonRpc('https://api.eosn.io');
-let mixineos = new MixinEos('https://api.eosn.io');
+let mixineos: any = null;
 
 // let jsonRpc = new JsonRpc('http://192.168.1.3:9000');
 // let CHAIN_ID = '8a34ec7df1b8cd06ff4a8abbaa7cc50300823350cadc59ab296cb00d104d2b8f'
@@ -314,6 +315,7 @@ export class Index {
     constructor() {
         this.isExtension = true;
         this.identity = null
+        this.getIdentity = this.getIdentity.bind(this);
     }
 
     loadPlugin(plugin: Plugin) {
@@ -348,9 +350,9 @@ export class Index {
         } else if (request.type === 'requestSignature') {
             return new Promise((resolve, reject) => {
                 // console.log('++++request.payload:', request.payload);
-                mixineos.signTransaction(request.payload.transaction).then(s => {
+                mixineos.signTransaction(request.payload.transaction).then((s: any) => {
                     resolve({signatures:s});
-                }).catch(e => {
+                }).catch((e: any) => {
                     reject(e);
                 })
             });
@@ -372,7 +374,7 @@ export class Index {
     getIdentity(requiredFields: any) {
         console.log("++++++++++getIdentity");
         return new Promise((resolve, reject) => {
-            _getBindAccount().then(account => {
+            _getBindAccount().then((account: any) => {
                 const ids = {
                     hash: '1df7bb65ad53a9eb89b4327a56b1200f3abaf085ffec00af222b9eb7622b0734',
                     publicKey: PUBLIC_KEY,
@@ -410,7 +412,7 @@ export class Index {
                 };
                 this.identity = ids;
                 resolve(ids);
-            }).catch(e => {
+            }).catch((e: any) => {
                 reject(e)
             });
         })
@@ -501,14 +503,15 @@ export class Index {
 // });
 // document.dispatchEvent(new CustomEvent('walletLoaded'));
 
-const InitWallet = () => {
+const InitWallet = (node_url: string, client_id: string) => {
     if (window.wallet) {
         return;
     }
 
+    mixineos = new MixinEos(node_url, client_id);
     window.wallet = new Index();
+    window.scatter = window.wallet;
 
-    window.scatter = new Index();
     window.scatter.loadPlugin(new ScatterEOS());
 
     document.addEventListener('walletLoaded', (event: any) => {
@@ -538,5 +541,6 @@ const closeAlert = ()  => {
     swal.close && swal.close();
 }
 
-InitWallet();
+InitWallet(NODE_URL, CLIENT_ID);
+
 export { InitWallet, showAlert, closeAlert };
