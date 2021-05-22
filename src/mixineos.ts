@@ -21,6 +21,7 @@ const swal: SweetAlert = _swal as any;
 
 
 declare let window: any;
+declare let document: any;
 
 
 const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
@@ -89,6 +90,8 @@ class MixinEos {
     signers: any;
     payment_canceled: boolean;
     client_id: string;
+    main_contract: any;
+    multisig_perm: any;
     constructor(url: string, client_id: string) {
         const signatureProvider = new JsSignatureProvider([]);
 
@@ -99,17 +102,12 @@ class MixinEos {
         this.threshold = 0;
         this.payment_canceled = false;
         this.client_id = client_id;
+        this.main_contract = null;
+        this.multisig_perm = null;
     }
-    
+
     requestSigners = async (): Promise<[number, Array<any>]> => {
-        var account = await this.jsonRpc.get_account(MAIN_CONTRACT);
-        var multisig_permission = account.permissions.find((x: any) => x.perm_name === 'multisig');
-        var _threshold = multisig_permission.required_auth.threshold;
-        var singer_count = multisig_permission.required_auth.keys.length || multisig_permission.required_auth.accounts.length;
-        // singers = singers.filter((x: any) => {
-        //     console.log(x);
-        //     return x != 'learnfortest'
-        // })
+        var singer_count = this.multisig_perm.required_auth.keys.length;
         var params = {
             json: true,
             code: MAIN_CONTRACT,
@@ -135,7 +133,7 @@ class MixinEos {
         });
         // console.log('+++rows after filter out learnfortest:', rows);
     
-        return [_threshold, rows];
+        return rows;
     }
     
     requestReceiver = async () => {
@@ -143,12 +141,6 @@ class MixinEos {
     }
     
     requestPayment = async (amount: string, trace_id: string, memo: string, asset_id: string) => {
-        const account = await this.jsonRpc.get_account(MAIN_CONTRACT);
-        const [multisig] = account.permissions.filter((x:any) => {
-            return x.perm_name === 'multisig';
-        });
-        // console.log(multisig);
-    
         var payment = {
             "asset_id": asset_id,
             "amount": amount,
@@ -156,7 +148,7 @@ class MixinEos {
             "memo": memo,
             "opponent_multisig": {
                 "receivers": await this.requestReceiver(),
-                "threshold": multisig.required_auth.threshold
+                "threshold": this.multisig_perm.required_auth.threshold
             }
         }
 
@@ -291,6 +283,7 @@ class MixinEos {
                     if (signatures.length < this.threshold) {
                         signatures.push(...data.signatures);
                     }
+                    this.setReminder(`正在请求多重签名(${signatures.length}/${this.threshold})`);
                     // console.log('++++signatures is:', signatures);
                     if (signatures.length >= this.threshold) {
                         signatures.sort();
@@ -309,7 +302,10 @@ class MixinEos {
 
     prepare = async () => {
         this.payment_canceled = false;
-        [this.threshold, this.signers] = await this.requestSigners();
+        this.main_contract = await this.jsonRpc.get_account(MAIN_CONTRACT);
+        this.multisig_perm = this.main_contract.permissions.find((x: any) => x.perm_name === 'multisig');
+        this.threshold = this.multisig_perm.required_auth.threshold;
+        this.signers = await this.requestSigners();
     }
 
     closeAlert = () => {
@@ -331,6 +327,14 @@ class MixinEos {
                 buttons: [false]
             });
         }
+    }
+
+    setReminder = (text: string) => {
+        let elements = document.getElementsByClassName('swal-text');
+        if (elements.length === 0) {
+            return;
+        }
+        elements[0].innerHTML = text;    
     }
 
     _requestDeposit = async (account: string, amount: string, user_id: string, token_name: string) => {
@@ -373,7 +377,7 @@ class MixinEos {
             return null;
         }
 
-        this.showReminder('正在请求签名...', true);
+        this.showReminder(`正在请求多重签名(0/${this.threshold})`, true);
 
         const signatures = await this.requestDepositsignatures(user_id, trace_id, transaction);
         console.log("++++++=signatures:", signatures);
@@ -504,7 +508,7 @@ class MixinEos {
         // TODO
         let packed_transaction: any = null;
     
-        this.showReminder('正在请求多重签名...');
+        this.showReminder(`正在请求多重签名(0/${this.threshold})`);
     
         let _signatures = await this.requestSignatures(0, user_id, trace_id, transaction, payment);
         let signatures = _signatures as Array<string>;
