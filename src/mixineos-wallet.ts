@@ -319,8 +319,9 @@ export class Index {
     }
 
     loadPlugin(plugin: Plugin) {
+        console.log("++++++loadPlugin:", plugin);
         const noIdFunc = () => {
-            if (!this.identity) throw new Error('No Identity')
+            if (!this.identity) throw new Error('No IIIIdentity')
         };
 
         PluginRepository.loadPlugin(plugin);
@@ -331,14 +332,14 @@ export class Index {
     }
 
     async connect(pluginName: string, options: any) {
-        // console.log("++++++++Index.connect:", pluginName, options);
+        console.log("++++++++Index.connect:", pluginName, options);
         return Promise.resolve(!0);
     }
 
     disconnect() {}
     
     sendApiRequest(request: any){
-        // console.log("++++sendApiRequest:", request);
+        console.log("++++sendApiRequest:", request);
         if (request.type === 'identityFromPermissions') {
             return window.wallet.getIdentity();
         } else if (request.type === 'getOrRequestIdentity') {
@@ -375,6 +376,7 @@ export class Index {
         console.log("++++++++++getIdentity");
         return new Promise((resolve, reject) => {
             _getBindAccount().then((account: any) => {
+                console.log("++++getIdentity:", account);
                 const ids = {
                     hash: '1df7bb65ad53a9eb89b4327a56b1200f3abaf085ffec00af222b9eb7622b0734',
                     publicKey: PUBLIC_KEY,
@@ -410,9 +412,10 @@ export class Index {
                 ],
                     kyc: false
                 };
-                this.identity = ids;
+                window.wallet.identity = ids;
                 resolve(ids);
             }).catch((e: any) => {
+                console.log("+++_getBindAccount error:", e)
                 reject(e)
             });
         })
@@ -503,21 +506,23 @@ export class Index {
 // });
 // document.dispatchEvent(new CustomEvent('walletLoaded'));
 
-const InitWallet = (node_url: string, client_id: string) => {
+const InitWallet = (node_url: string, client_id: string, auth_proxy: false) => {
     if (window.wallet) {
         return;
     }
 
-    mixineos = new MixinEos(node_url, client_id);
+    mixineos = new MixinEos(node_url, client_id, auth_proxy);
     window.wallet = new Index();
     window.scatter = window.wallet;
 
     window.scatter.loadPlugin(new ScatterEOS());
 
+    document.dispatchEvent(new CustomEvent('walletLoaded'));
+    document.dispatchEvent(new CustomEvent('scatterLoaded'));
+
     document.addEventListener('walletLoaded', (event: any) => {
         console.log("++++++++++walletLoaded", event);
     });
-    document.dispatchEvent(new CustomEvent('walletLoaded'));
     
     document.addEventListener('scatterLoaded', (event: any) => {
         console.log("++++++++++scatterLoaded", event);
