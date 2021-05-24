@@ -279,6 +279,10 @@ class MixinEos {
         this.signers = await this.requestSigners();
     }
 
+    finish = () => {
+        swal.close && swal.close();
+    }
+
     closeAlert = () => {
         swal.close && swal.close();
     }
@@ -357,9 +361,12 @@ class MixinEos {
 
         // asset_id="965e5c6e-434c-3fa9-b780-c50f43cd955c"
         const memo = `deposit|${user_id}|${trace_id}|${account}|${amount}|${token_name}|${expiration}|${ref_block_num}|${ref_block_prefix}`
-        const signatures = await this._requestSignaturesWithPayment(1, transaction, user_id, trace_id, asset_id, amount, memo);
+        const signatures = await this._requestSignaturesWithPayment(1, transaction, user_id, trace_id, asset_id, amount, memo, true);
 
-        return await this._sendTransaction(signatures, transaction);
+        const ret = await this._sendTransaction(signatures, transaction);
+
+        this.finish();
+        return ret;
     }
 
     requestDeposit = (account: string, amount: string, user_id: string, token_name: string) => {
@@ -391,7 +398,10 @@ class MixinEos {
         const [tx, transaction] = await generateWithdrawTx(this.api, account, amount, token_name);
         const signatures = await this.signTransaction(transaction);
 
-        return await this.jsonRpc.push_transaction({...transaction, signatures});    
+        const ret = await this._sendTransaction(signatures, transaction);
+        this.finish();
+        return ret;
+        // return await this.jsonRpc.push_transaction({...transaction, signatures});    
     }
 
     requestWithdraw = (amount: string, token_name: string) => {
@@ -430,7 +440,9 @@ class MixinEos {
         const memo = `createacc|${user_id}|${trace_id}|${new_account}|${amount}|${expiration}|${ref_block_num}|${ref_block_prefix}`
         const signatures = await this._requestSignaturesWithPayment(1, transaction, user_id, trace_id, asset_id, amount, memo);
 
-        return await this._sendTransaction(signatures, transaction);
+        const ret = await this._sendTransaction(signatures, transaction);
+        this.finish();
+        return ret;
     }
 
     requestCreateAccount = (user_id: string, new_account: string, amount: string) => {
@@ -455,7 +467,7 @@ class MixinEos {
         });
     }
     
-    _requestSignaturesWithPayment = async (key_type: number, transaction: any, user_id: string, trace_id: string, asset_id: string, amount: string, memo: string) => {
+    _requestSignaturesWithPayment = async (key_type: number, transaction: any, user_id: string, trace_id: string, asset_id: string, amount: string, memo: string, deposit: boolean=false) => {
         // const signer_urls = signers.map((x:any) => x.url);
         await this.prepare();
         let payment: any = null;
@@ -526,11 +538,11 @@ class MixinEos {
 
         this.showReminder(`正在请求多重签名(0/${this.threshold})`);
     
-        let _signatures = await this.requestSignatures(key_type, user_id, trace_id, transaction, payment);
+        let _signatures = await this.requestSignatures(key_type, user_id, trace_id, transaction, payment, deposit);
         let signatures = _signatures as Array<string>;
         // console.log("++++++signatures after sort:", signatures);
     
-        swal.close && swal.close();
+        // swal.close && swal.close();
     
         return signatures;
     }
@@ -546,7 +558,9 @@ class MixinEos {
         var _tx_id = Buffer.from(fromHexString(tx_id)).toString('base64');
         var memo = `multisig|${user_id}|${trace_id}|${_tx_id}`;
 
-        return await this._requestSignaturesWithPayment(0, transaction, user_id, trace_id, asset_id, "0.1", memo);
+        const ret = await this._requestSignaturesWithPayment(0, transaction, user_id, trace_id, asset_id, "0.1", memo);
+        swal.close && swal.close();
+        return ret;
     }
 
     getBalance = async (account: string, symbol: string) => {
