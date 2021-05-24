@@ -64,7 +64,7 @@ class MixinEos {
     main_contract: any;
     multisig_perm: any;
     auth_proxy: boolean;
-
+    show_qrcode: boolean;
     constructor(url: string, client_id: string, auth_proxy: boolean=false) {
         const signatureProvider = new JsSignatureProvider([]);
 
@@ -78,6 +78,7 @@ class MixinEos {
         this.main_contract = null;
         this.multisig_perm = null;
         this.auth_proxy = auth_proxy;
+        this.show_qrcode = false;
     }
 
     requestSigners = async (): Promise<[number, Array<any>]> => {
@@ -173,13 +174,13 @@ class MixinEos {
         return ret2.data;
     }
     
-    request_signature = async (url: string, user_id: string, trace_id: string, trx: any, payment: any, deposit: boolean) => {
+    request_signature = async (key_type: number, url: string, user_id: string, trace_id: string, trx: any, payment: any) => {
         for (var i=0;i<120;i++) {
             var full_url: any
-            if (deposit) {
-                full_url = `${url}/request_deposit_signature`;
+            if (key_type == 0) {
+                full_url = `${url}/request_signer_signature`;
             } else {
-                full_url = `${url}/request_signature`;
+                full_url = `${url}/request_manager_signature`;
             }
             console.log("++++++url:", full_url);
             let r = await fetch(full_url, {
@@ -207,7 +208,7 @@ class MixinEos {
         return null;
     }
 
-    requestSignatures = (key_type: number, user_id: string, trace_id: string, transaction: any, payment: any, deposit: boolean=false) => {
+    requestSignatures = (key_type: number, user_id: string, trace_id: string, transaction: any, payment: any) => {
         return new Promise((resove, reject) => {
             setTimeout(() => reject('time out'), 120000);
             let signatures: string[] = [];
@@ -217,7 +218,7 @@ class MixinEos {
             this.signers.map((signer: any) => {
                 const url = signer.url;
                 // console.log("++++++signer url:", url);
-                this.request_signature(url, user_id, trace_id, trx, payment, deposit).then(data => {
+                this.request_signature(key_type, url, user_id, trace_id, trx, payment).then(data => {
                     if (!data) {
                         return;
                     }
@@ -361,7 +362,7 @@ class MixinEos {
 
         // asset_id="965e5c6e-434c-3fa9-b780-c50f43cd955c"
         const memo = `deposit|${user_id}|${trace_id}|${account}|${amount}|${token_name}|${expiration}|${ref_block_num}|${ref_block_prefix}`
-        const signatures = await this._requestSignaturesWithPayment(1, transaction, user_id, trace_id, asset_id, amount, memo, true);
+        const signatures = await this._requestSignaturesWithPayment(1, transaction, user_id, trace_id, asset_id, amount, memo);
 
         const ret = await this._sendTransaction(signatures, transaction);
 
@@ -466,8 +467,38 @@ class MixinEos {
             });
         });
     }
-    
-    _requestSignaturesWithPayment = async (key_type: number, transaction: any, user_id: string, trace_id: string, asset_id: string, amount: string, memo: string, deposit: boolean=false) => {
+
+    _showPaymentQrcode = async (payment_link: string) => {
+        let qrcodeUrl = await QRCode.toDataURL(payment_link);
+        console.log("++++++QRCode.toDataURL", qrcodeUrl);
+
+        let ret = await swal({
+            text: '正在检查支付结果...',
+            closeOnClickOutside: false,
+            buttons: {
+                cancel: {
+                    text: "取消",
+                    closeModal: false
+                },
+                catch: {
+                    text: "拷贝支付链接",
+                    value: "copy",
+                    closeModal: false
+                }
+            },
+            icon: qrcodeUrl
+        });
+        switch (ret) {
+            case "copy":
+                //TODO copy link
+                break;
+            default:
+                this.payment_canceled = true;
+        }
+        swal.close && swal.close();
+    }
+
+    _requestSignaturesWithPayment = async (key_type: number, transaction: any, user_id: string, trace_id: string, asset_id: string, amount: string, memo: string) => {
         // const signer_urls = signers.map((x:any) => x.url);
         await this.prepare();
         let payment: any = null;
@@ -490,28 +521,16 @@ class MixinEos {
 
         var pay_link = `mixin://codes/${payment.code_id}`;
         console.log('+++payment link:', pay_link);
-        if (mobileAndTabletCheck()) {
+        if (mobileAndTabletCheck() && !this.show_qrcode) {
             this.showPaymentCheckingReminder().then((value) => {
                 if (value) {
                     this.payment_canceled = true;
                     // swal.close();
                 }
-            });  
-            window.open(pay_link, "_blank");  
-        } else {
-            let qrcodeUrl = await QRCode.toDataURL(pay_link);
-            console.log("++++++QRCode.toDataURL", qrcodeUrl);
-            swal({
-                text: '正在检查支付结果...',
-                closeOnClickOutside: false,
-                button: {
-                    text: "取消",
-                    closeModal: false,
-                },
-                icon: qrcodeUrl
-            } as any).then((value:any) => {
-                this.payment_canceled = true;
             });
+            window.open(pay_link, "_blank");
+        } else {
+            this._showPaymentQrcode(pay_link);
         }
 
         var paid = false;
@@ -538,7 +557,7 @@ class MixinEos {
 
         this.showReminder(`正在请求多重签名(0/${this.threshold})`);
     
-        let _signatures = await this.requestSignatures(key_type, user_id, trace_id, transaction, payment, deposit);
+        let _signatures = await this.requestSignatures(key_type, user_id, trace_id, transaction, payment);
         let signatures = _signatures as Array<string>;
         // console.log("++++++signatures after sort:", signatures);
     
@@ -630,7 +649,8 @@ class MixinEos {
             });
             const r2 = await r.json();
             // console.log('+++my profile:', r2);
-            if (r2.error && r2.error.code == 401) {
+//            if (r2.error && r2.error.code == 401) {
+            if (r2.error) {
                 //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
                 await this.requestAuthorization();
                 return "";
