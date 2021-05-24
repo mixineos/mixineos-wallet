@@ -88,4 +88,41 @@ const generateWithdrawTx = async(api: Api, account: string, amount: string, toke
     return [trx, transaction];
 }
 
-export { generateDepositTx, generateWithdrawTx }
+const generateCreateAccountTx = async(api: Api, user_id: string, new_account: string, amount: string) => {
+    const _user_id = '0x' + replaceAll(user_id, "-", "");
+    const str_amount = parseFloat(amount).toFixed(8);
+
+    let transaction = await api.transact(
+        {
+          actions: [
+            {
+                account: MAIN_CONTRACT,
+                name: "createacc",
+                authorization: [
+                    {
+                        actor: MAIN_CONTRACT,
+                        permission: "active"
+                    }
+                ],
+                data: {
+                   new_account_name: new_account,
+                   user_id: _user_id,
+                   paid: `${str_amount} EOS`
+                }
+            }
+          ]
+        },
+        {
+            broadcast: false,
+            sign: false,
+            blocksBehind: 3,
+            expireSeconds: 60*60
+        }
+    );
+    // console.log("++++transaction:", transaction);
+    const trx = api.deserializeTransaction(transaction.serializedTransaction);
+    // console.log("++++trx:", trx);
+    return [trx, transaction];
+}
+
+export { generateDepositTx, generateWithdrawTx, generateCreateAccountTx }

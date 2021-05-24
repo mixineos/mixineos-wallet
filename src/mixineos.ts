@@ -20,7 +20,11 @@ const swal: SweetAlert = _swal as any;
 
 import * as QRCode from 'qrcode'
 
-import { generateDepositTx, generateWithdrawTx } from './tx_generator'
+import {
+    generateDepositTx,
+    generateWithdrawTx,
+    generateCreateAccountTx
+} from './tx_generator'
 
 import {
     replaceAll,
@@ -47,6 +51,8 @@ const auth_server = 'http://192.168.1.3:2053'
 // const paymentUrl = `${auth_server}/request_payment`
 
 const oauthUrl = "https://mixin-api.zeromesh.net/oauth/token"
+const cnb_asset_id = "965e5c6e-434c-3fa9-b780-c50f43cd955c";
+
 
 class MixinEos {
     api: Api;
@@ -146,7 +152,7 @@ class MixinEos {
         return ret;
     }
 
-    requestPayment = async (amount: string, trace_id: string, memo: string, asset_id: string) => {
+    requestPayment = async (trace_id: string, asset_id: string, amount: string, memo: string) => {
         var payment = {
             "asset_id": asset_id,
             "amount": amount,
@@ -167,8 +173,6 @@ class MixinEos {
         return ret2.data;
     }
     
-    
-
     requestSignatures = (key_type: number, user_id: string, trace_id: string, transaction: any, payment: any, deposit: boolean=false) => {
         return new Promise((resove, reject) => {
             setTimeout(() => reject('time out'), 120000);
@@ -265,10 +269,6 @@ class MixinEos {
         });
     }
 
-    requestDepositsignatures = async (user_id: string, trace_id: string, transaction: any) => {
-        return await this.requestSignatures(1, user_id, trace_id, transaction, {}, true);
-    }
-
     prepare = async () => {
         this.payment_canceled = false;
         this.main_contract = await this.jsonRpc.get_account(MAIN_CONTRACT);
@@ -306,6 +306,36 @@ class MixinEos {
         elements[0].innerHTML = text;    
     }
 
+    showPaymentCheckingReminder = () => {
+        return swal({
+            text: '正在检查支付结果...',
+            closeOnClickOutside: false,
+            button: {
+                text: "取消",
+                closeModal: false,
+            },
+            icon:'https://mixin-www.zeromesh.net/assets/fb6f3c230cb846e25247dfaa1da94d8f.gif'
+        } as any)
+    }
+
+    _sendTransaction = async (signatures: any, transaction: any) => {
+        this.setReminder('正在发送...');
+        const r2 = await this.jsonRpc.push_transaction({
+            signatures: signatures as string[],
+            compression: transaction.compression,
+            serializedTransaction: transaction.serializedTransaction,
+            serializedContextFreeData: transaction.serializedContextFreeData
+        });
+        // this.closeAlert();
+
+        this.setReminder('发送成功...');
+        await delay(1000);
+        // setTimeout(() => {
+        //     this.closeAlert();
+        // }, 2000);
+        return r2;
+    }
+
     _requestDeposit = async (account: string, amount: string, user_id: string, token_name: string) => {
         await this.prepare();
 
@@ -325,85 +355,9 @@ class MixinEos {
 
         // asset_id="965e5c6e-434c-3fa9-b780-c50f43cd955c"
         const memo = `deposit|${user_id}|${trace_id}|${account}|${amount}|${token_name}|${expiration}|${ref_block_num}|${ref_block_prefix}`
-        let payment = await this.requestPayment(amount, trace_id, memo, asset_id);
+        const signatures = await this._requestSignaturesWithPayment(1, transaction, user_id, trace_id, asset_id, amount, memo);
 
-        var pay_link = `mixin://codes/${payment.code_id}`;
-        console.log('+++payment link:', pay_link);
-        if (mobileAndTabletCheck()) {
-            this.showPaymentCheckingReminder().then((value) => {
-                if (value) {
-                    this.payment_canceled = true;
-                    // swal.close();
-                }
-            });  
-            window.open(pay_link, "_blank");
-        } else {
-            let qrcodeUrl = await QRCode.toDataURL(pay_link);
-            console.log("++++++QRCode.toDataURL", qrcodeUrl);
-            swal({
-                text: '正在检查支付结果...',
-                closeOnClickOutside: false,
-                button: {
-                    text: "取消",
-                    closeModal: false,
-                },
-                icon: qrcodeUrl
-            } as any).then((value:any) => {
-                this.payment_canceled = true;
-            });
-        }
-
-        var timeout = true;
-        for (var i=0;i<60;i++) {
-            await delay(2000);
-            if (this.payment_canceled) {
-                return null;
-            }
-            payment = await this.requestPayment(amount, trace_id, memo, asset_id);
-            if (payment.status === 'paid') {
-                timeout = false;
-                break;
-            }
-        }
-        if (timeout) {
-            return null;
-        }
-
-        this.showReminder(`正在请求多重签名(0/${this.threshold})`, true);
-
-        const signatures = await this.requestDepositsignatures(user_id, trace_id, transaction);
-        console.log("++++++=signatures:", signatures);
-        
-        // this.closeAlert();
-
-        this.setReminder('正在发送...');
-
-        const r2 = await this.jsonRpc.push_transaction({
-            signatures: signatures as string[],
-            compression: transaction.compression,
-            serializedTransaction: transaction.serializedTransaction,
-            serializedContextFreeData: transaction.serializedContextFreeData
-        });
-        // this.closeAlert();
-
-        this.setReminder('发送成功...');
-        await delay(1000);
-        // setTimeout(() => {
-        //     this.closeAlert();
-        // }, 2000);
-        return r2;
-    }
-
-    showPaymentCheckingReminder = () => {
-        return swal({
-            text: '正在检查支付结果...',
-            closeOnClickOutside: false,
-            button: {
-                text: "取消",
-                closeModal: false,
-            },
-            icon:'https://mixin-www.zeromesh.net/assets/fb6f3c230cb846e25247dfaa1da94d8f.gif'
-        } as any)
+        return await this._sendTransaction(signatures, transaction);
     }
 
     requestDeposit = (account: string, amount: string, user_id: string, token_name: string) => {
@@ -413,12 +367,6 @@ class MixinEos {
                 this.closeAlert();
                 reject('time out');
             }, 120000);
-
-            // this.showPaymentCheckingReminder().then((value) => {
-            //     this.payment_canceled = true;
-            //     reject(value);
-            //     swal.close && swal.close();
-            // });
 
             this._requestDeposit(account, amount, user_id, token_name).then(r => {
                 swal.close && swal.close();
@@ -440,7 +388,7 @@ class MixinEos {
         }
         const [tx, transaction] = await generateWithdrawTx(this.api, account, amount, token_name);
         const signatures = await this.signTransaction(transaction);
-        // tx.signatures = signatures;
+
         return await this.jsonRpc.push_transaction({...transaction, signatures});    
     }
 
@@ -466,33 +414,52 @@ class MixinEos {
         });
     }    
 
+    _requestCreateAccount = async (user_id: string, new_account: string, amount: string) => {
+        await this.prepare();
+        const [tx, transaction] = await generateCreateAccountTx(this.api, user_id, new_account, amount);
 
-    _requestCrossTransfer = async (user_id: string, trace_id: string, tx_id: string) => {
-        const asset_id = "965e5c6e-434c-3fa9-b780-c50f43cd955c";
-        var _tx_id = Buffer.from(fromHexString(tx_id)).toString('base64');
-        
-        var memo = `multisig|${user_id}|${trace_id}|${_tx_id}`;
-        return await this.requestPayment("0.1", trace_id, memo, asset_id);
+        const expiration = tx.expiration
+        const ref_block_num = tx.ref_block_num
+        const ref_block_prefix = tx.ref_block_prefix
+
+        // asset_id="965e5c6e-434c-3fa9-b780-c50f43cd955c"
+        const trace_id = v4();
+        const asset_id = supported_asset_ids['MEOS'];
+        const memo = `createacc|${user_id}|${trace_id}|${new_account}|${amount}|${expiration}|${ref_block_num}|${ref_block_prefix}`
+        const signatures = await this._requestSignaturesWithPayment(1, transaction, user_id, trace_id, asset_id, amount, memo);
+
+        return await this._sendTransaction(signatures, transaction);
+    }
+
+    requestCreateAccount = (user_id: string, new_account: string, amount: string) => {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                this.payment_canceled = true;
+                this.closeAlert();
+                reject('time out');
+            }, 120000);
+            // this.showPaymentCheckingReminder().then((value) => {
+            //     this.payment_canceled = true;
+            //     reject(value);
+            //     swal.close && swal.close();
+            // });
+            this._requestCreateAccount(user_id, new_account, amount).then((r: any) => {
+                swal.close && swal.close();
+                resolve(r);
+            }).catch(e => {
+                swal.close && swal.close();
+                reject(e);
+            });
+        });
     }
     
-    _signTransaction = async (transaction: any) => {
+    _requestSignaturesWithPayment = async (key_type: number, transaction: any, user_id: string, trace_id: string, asset_id: string, amount: string, memo: string) => {
         // const signer_urls = signers.map((x:any) => x.url);
         await this.prepare();
-
-        const trace_id = v4();
-        // console.log("++++++++trace_id:", trace_id);
-        const user_id = localStorage.getItem('user_id');
-    
-        var serializedTransaction = transaction.serializedTransaction;
-        var tx_id = toHexString(eosjs_sha256(Buffer.from(serializedTransaction)));
-    
-        // alert(JSON.stringify(trx));
-    
         let payment: any = null;
         for (var i=0;i<3;i++) {
             try {
-                payment = await this._requestCrossTransfer(user_id, trace_id, tx_id);
-                // console.log("+++++++_requestCrossTransfer:", payment);
+                payment = await this.requestPayment(trace_id, asset_id, amount, memo);
                 break;
             } catch (e) {
                 console.error(e);
@@ -540,7 +507,7 @@ class MixinEos {
                 console.log('payment canceled...');
                 throw Error('canceled');
             }
-            payment = await this._requestCrossTransfer(user_id, trace_id, tx_id);
+            payment = await this.requestPayment(trace_id, asset_id, amount, memo);
             if (payment.error) {
                 continue;
             }
@@ -554,14 +521,10 @@ class MixinEos {
         if (!paid) {
             throw Error('payment timeout');
         }
-    
-        let promises: Array<Promise<any>> = [];
-        // TODO
-        let packed_transaction: any = null;
-    
+
         this.showReminder(`正在请求多重签名(0/${this.threshold})`);
     
-        let _signatures = await this.requestSignatures(0, user_id, trace_id, transaction, payment);
+        let _signatures = await this.requestSignatures(key_type, user_id, trace_id, transaction, payment);
         let signatures = _signatures as Array<string>;
         // console.log("++++++signatures after sort:", signatures);
     
@@ -569,17 +532,19 @@ class MixinEos {
     
         return signatures;
     }
-    
-    signTransaction = (transaction: any) => {
-        return new Promise((resolve, reject) => {
-            this._signTransaction(transaction).then(r => {
-                swal.close && swal.close();
-                resolve(r);
-            }).catch(e => {
-                swal.close && swal.close();
-                reject(e);
-            });
-        });
+
+    signTransaction = async (transaction: any) => {
+        await this.prepare();
+        const trace_id = v4();
+        const user_id = localStorage.getItem('user_id');
+        var serializedTransaction = transaction.serializedTransaction;
+        var tx_id = toHexString(eosjs_sha256(Buffer.from(serializedTransaction)));
+        
+        const asset_id = "965e5c6e-434c-3fa9-b780-c50f43cd955c";
+        var _tx_id = Buffer.from(fromHexString(tx_id)).toString('base64');
+        var memo = `multisig|${user_id}|${trace_id}|${_tx_id}`;
+
+        return await this._requestSignaturesWithPayment(0, transaction, user_id, trace_id, asset_id, "0.1", memo);
     }
 
     getBalance = async (account: string, symbol: string) => {
@@ -739,6 +704,7 @@ class MixinEos {
             }
         });
         console.log(ret);
+        // TODO fix url
         switch (ret) {
             case "create":
     //                return await create_account(user_id);
