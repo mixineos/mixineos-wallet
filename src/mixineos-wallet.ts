@@ -96,41 +96,43 @@ const _getBindAccount = async () => {
     var r = await jsonRpc.get_table_rows(params);
     // console.log("+++get table: bindaccounts:", r); 
 
-    if (r.rows.length == 0) {
-        let ret = await swal({
-            text: '未绑定EOS账号，需要创建吗？',
-            closeOnClickOutside: false,
-            buttons: {
-                cancel: "谢谢，不用!" as any,
-                catch: {
-                    text: "好的，帮我创建",
-                    value: "create",
-                },
-                defeat: {
-                    text: "我已经有EOS账号",
-                    value: "bind",
-                }
-            }
-        });
-        console.log(ret);
-        switch (ret) {
-            case "create":
-//                return await create_account(user_id);
-                window.location.replace("http://192.168.1.8011");
-                throw Error("creating...");
-                break;
-            case "bind":
-                window.location.replace("http://192.168.1.8011");
-                throw Error("binding...");
-            default:
-                throw Error('user canceled');
-        }
-        throw Error('account not found!');
-    } else {
+    if (r.rows.length !== 0) {
         account = r.rows[0].account;
         localStorage.setItem('binded_account', account);
-        return account;    
+        return account;
     }
+
+    let ret = await swal({
+        text: '未绑定EOS账号，需要创建吗？',
+        closeOnClickOutside: false,
+        buttons: {
+            cancel: "谢谢，不用!" as any,
+            catch: {
+                text: "好的，帮我创建",
+                value: "create",
+            },
+            defeat: {
+                text: "我已经有EOS账号",
+                value: "bind",
+            }
+        }
+    });
+    console.log(ret);
+    switch (ret) {
+        case "create":
+//                return await create_account(user_id);
+            window.location.replace("http://192.168.1.8011");
+            throw Error("creating...");
+            break;
+        case "bind":
+            window.location.replace("http://192.168.1.8011");
+            throw Error("binding...");
+        default:
+            throw Error('user canceled');
+    }
+    throw Error('account not found!');
+
+
 }
 
 const BLOCKCHAIN_SUPPORT = 'blockchain_support';
@@ -506,12 +508,17 @@ export class Index {
 // });
 // document.dispatchEvent(new CustomEvent('walletLoaded'));
 
-const InitWallet = (node_url: string, client_id: string, auth_proxy: false) => {
+const InitWallet = (node_url: string, client_id: string, auth_proxy: boolean = false, inject: boolean=true) => {
     if (window.wallet) {
         return;
     }
 
     mixineos = new MixinEos(node_url, client_id, auth_proxy);
+    window.mixineos = mixineos;
+    if (!inject) {
+        return;
+    }
+
     window.wallet = new Index();
     window.scatter = window.wallet;
 
