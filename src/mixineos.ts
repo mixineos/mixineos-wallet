@@ -173,49 +173,51 @@ class MixinEos {
         return ret2.data;
     }
     
+    request_signature = async (url: string, user_id: string, trace_id: string, trx: any, payment: any, deposit: boolean) => {
+        for (var i=0;i<120;i++) {
+            var full_url: any
+            if (deposit) {
+                full_url = `${url}/request_deposit_signature`;
+            } else {
+                full_url = `${url}/request_signature`;
+            }
+            console.log("++++++url:", full_url);
+            let r = await fetch(full_url, {
+                method: "POST",
+                headers: {
+                    "Content-type": "application/json",
+                },
+                body: JSON.stringify({
+                    user_id: user_id,
+                    trace_id: trace_id,
+                    trx: trx,
+                    payment: payment
+                }),
+                // credentials: 'include'
+            });
+            let r2 = await r.json();
+            if (r2.error) {
+                return null;
+            }
+            if (r2.data) {
+                return r2.data;
+            }
+            await delay(1000);
+        }
+        return null;
+    }
+
     requestSignatures = (key_type: number, user_id: string, trace_id: string, transaction: any, payment: any, deposit: boolean=false) => {
         return new Promise((resove, reject) => {
             setTimeout(() => reject('time out'), 120000);
             let signatures: string[] = [];
             const trx = this.api.deserializeTransaction(transaction.serializedTransaction);
             console.log("++++++requestSignatures:", trx);
-            const request_signature = async (url: string) => {
-                for (var i=0;i<120;i++) {
-                    var full_url: any
-                    if (deposit) {
-                        full_url = `${url}/request_deposit_signature`;
-                    } else {
-                        full_url = `${url}/request_signature`;
-                    }
-                    console.log("++++++url:", full_url);
-                    let r = await fetch(full_url, {
-                        method: "POST",
-                        headers: {
-                            "Content-type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            user_id: user_id,
-                            trace_id: trace_id,
-                            trx: trx,
-                            payment: payment
-                        }),
-                        // credentials: 'include'
-                    });
-                    let r2 = await r.json();
-                    if (r2.error) {
-                        return null;
-                    }
-                    if (r2.data) {
-                        return r2.data;
-                    }
-                    await delay(1000);
-                }
-                return null;
-            }
+
             this.signers.map((signer: any) => {
                 const url = signer.url;
                 // console.log("++++++signer url:", url);
-                request_signature(url).then(data => {
+                this.request_signature(url, user_id, trace_id, trx, payment, deposit).then(data => {
                     if (!data) {
                         return;
                     }
@@ -412,7 +414,7 @@ class MixinEos {
                 reject(e);
             });
         });
-    }    
+    }
 
     _requestCreateAccount = async (user_id: string, new_account: string, amount: string) => {
         await this.prepare();
