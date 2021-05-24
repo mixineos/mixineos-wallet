@@ -1,7 +1,9 @@
+import { Api } from 'eosjs/dist/eosjs-api';
+
 import { supported_asset_ids, MAIN_CONTRACT, TOKEN_CONTRACT } from "./constants";
 import { replaceAll } from './utils'
 
-const generateDepositTx = async(api: any, account: string, amount: string, token_name: string, user_id: string, asset_id: string) => {
+const generateDepositTx = async(api: Api, account: string, amount: string, token_name: string, user_id: string, asset_id: string) => {
     const _user_id = '0x' + replaceAll(user_id, "-", "");
     const str_amount = parseFloat(amount).toFixed(8);
 
@@ -37,7 +39,7 @@ const generateDepositTx = async(api: any, account: string, amount: string, token
     return [trx, transaction];
 }
 
-const generateWithdrawTx = async(api: any, account: string, amount: string, token_name: string) => {
+const generateWithdrawTx = async(api: Api, account: string, amount: string, token_name: string) => {
     let transaction = await api.transact(
     {
         actions: [
