@@ -27,6 +27,7 @@ declare let document: any;
 
 const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
 const MAIN_CONTRACT = 'mixincrossss';
+const TOKEN_CONTRACT = 'mixinwtokens';
 
 const CLIENT_ID = '49b00892-6954-4826-aaec-371ca165558a';
 // const auth_server = 'https://dex.uuos.io:2053'
@@ -259,6 +260,7 @@ class MixinEos {
                     } else {
                         full_url = `${url}/request_signature`;
                     }
+                    console.log("++++++url:", full_url);
                     let r = await fetch(full_url, {
                         method: "POST",
                         headers: {
@@ -389,7 +391,7 @@ class MixinEos {
     //   const token_name = supported_mixin_ids[asset_id];
         const asset_id = supported_asset_ids[token_name];
 
-        if (!token_name) {
+        if (!asset_id) {
             throw Error("asset id not supported currently");
         }
         const [tx, transaction] = await this.generateDepositTx(account, amount, token_name, user_id, asset_id);
@@ -401,9 +403,32 @@ class MixinEos {
         // asset_id="965e5c6e-434c-3fa9-b780-c50f43cd955c"
         const memo = `deposit|${user_id}|${trace_id}|${account}|${amount}|${token_name}|${expiration}|${ref_block_num}|${ref_block_prefix}`
         let payment = await this.requestPayment(amount, trace_id, memo, asset_id);
-        const payment_link = `mixin://codes/${payment.code_id}`;
-        console.log("+++++++payment_link:", payment_link);
-        window.open(payment_link, '_blank');
+
+        var pay_link = `mixin://codes/${payment.code_id}`;
+        console.log('+++payment link:', pay_link);
+        if (mobileAndTabletCheck()) {
+            this.showPaymentCheckingReminder().then((value) => {
+                if (value) {
+                    this.payment_canceled = true;
+                    // swal.close();
+                }
+            });  
+            window.open(pay_link, "_blank");
+        } else {
+            let qrcodeUrl = await QRCode.toDataURL(pay_link);
+            console.log("++++++QRCode.toDataURL", qrcodeUrl);
+            swal({
+                text: '正在检查支付结果...',
+                closeOnClickOutside: false,
+                button: {
+                    text: "取消",
+                    closeModal: false,
+                },
+                icon: qrcodeUrl
+            } as any).then((value:any) => {
+                this.payment_canceled = true;
+            });
+        }
 
         var timeout = true;
         for (var i=0;i<60;i++) {
@@ -426,9 +451,9 @@ class MixinEos {
         const signatures = await this.requestDepositsignatures(user_id, trace_id, transaction);
         console.log("++++++=signatures:", signatures);
         
-        this.closeAlert();
+        // this.closeAlert();
 
-        this.showReminder('正在发送...');
+        this.setReminder('正在发送...');
 
         const r2 = await this.jsonRpc.push_transaction({
             signatures: signatures as string[],
@@ -436,13 +461,13 @@ class MixinEos {
             serializedTransaction: transaction.serializedTransaction,
             serializedContextFreeData: transaction.serializedContextFreeData
         });
-        this.closeAlert();
+        // this.closeAlert();
 
-        this.showReminder('操作成功...');
-
-        setTimeout(() => {
-            this.closeAlert();
-        }, 2000);
+        this.setReminder('发送成功...');
+        await delay(1000);
+        // setTimeout(() => {
+        //     this.closeAlert();
+        // }, 2000);
         return r2;
     }
 
@@ -466,11 +491,11 @@ class MixinEos {
                 reject('time out');
             }, 120000);
 
-            this.showPaymentCheckingReminder().then((value) => {
-                this.payment_canceled = true;
-                reject(value);
-                swal.close && swal.close();
-            });
+            // this.showPaymentCheckingReminder().then((value) => {
+            //     this.payment_canceled = true;
+            //     reject(value);
+            //     swal.close && swal.close();
+            // });
 
             this._requestDeposit(account, amount, user_id, token_name).then(r => {
                 swal.close && swal.close();
@@ -481,6 +506,92 @@ class MixinEos {
             });
         });
     }
+
+    generateWithdrawTx = async(account: string, amount: string, token_name: string) => {
+        let transaction = await this.api.transact(
+        {
+            actions: [
+            {
+                account: MAIN_CONTRACT,
+                name: "openwithdraw",
+                authorization: [
+                    {
+                    actor: account,
+                    permission: "active"
+                    }
+                ],
+                data: {
+                    account: account,
+                    symbol: `8,${token_name}`
+                }
+            },
+            {
+                account: TOKEN_CONTRACT,
+                name: "transfer",
+                authorization: [
+                    {
+                    actor: account,
+                    permission: "active"
+                    }
+                ],
+                data: {
+                    from: account,
+                    to: MAIN_CONTRACT,
+                    quantity: `${amount} ${token_name}`,
+                    memo: "withdraw"
+                }
+            }
+            ]
+        },
+        {
+            broadcast: false,
+            sign: false,
+            blocksBehind: 3,
+            expireSeconds: 60*10
+        });
+
+        // console.log("++++transaction:", transaction);
+        const trx = this.api.deserializeTransaction(transaction.serializedTransaction);
+        // console.log("++++trx:", trx);
+        return [trx, transaction];
+    }
+
+    _requestWithdraw = async (amount: string, token_name: string) => {
+        await this.prepare();
+        const asset_id = supported_asset_ids[token_name];
+        const account = await this.getBindAccount();
+
+        if (!asset_id) {
+            throw Error("asset id not supported currently");
+        }
+        const [tx, transaction] = await this.generateWithdrawTx(account, amount, token_name);
+        const signatures = await this.signTransaction(transaction);
+        // tx.signatures = signatures;
+        return await this.jsonRpc.push_transaction({...transaction, signatures});    
+    }
+
+    requestWithdraw = (amount: string, token_name: string) => {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                this.payment_canceled = true;
+                this.closeAlert();
+                reject('time out');
+            }, 120000);
+            // this.showPaymentCheckingReminder().then((value) => {
+            //     this.payment_canceled = true;
+            //     reject(value);
+            //     swal.close && swal.close();
+            // });
+            this._requestWithdraw(amount, token_name).then(r => {
+                swal.close && swal.close();
+                resolve(r);
+            }).catch(e => {
+                swal.close && swal.close();
+                reject(e);
+            });
+        });
+    }    
+
 
     _requestCrossTransfer = async (user_id: string, trace_id: string, tx_id: string) => {
         const asset_id = "965e5c6e-434c-3fa9-b780-c50f43cd955c";
@@ -611,13 +722,6 @@ class MixinEos {
         }
     }
 
-    _requestUserIdFromProxy = async () => {
-        localStorage.setItem('user_id', "");
-        localStorage.setItem('binded_account', "");
-        window.location.replace(`${auth_server}?ref=${window.location.href}`);
-        await delay(3000);
-    }
-
     _getUserId = async () => {
         const access_token = await this.getAccessToken();
         if (!access_token) {
@@ -656,7 +760,7 @@ class MixinEos {
         if (!user_id) {
             user_id = localStorage.getItem('user_id');
             if (!user_id) {
-                await this._requestUserIdFromProxy();
+                await this.requestAuthorization();
                 return "";    
             }
         } else {
@@ -673,7 +777,7 @@ class MixinEos {
             // console.log('+++my profile:', r2);
             if (r2.error && r2.error.code == 401) {
                 //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
-                await this._requestUserIdFromProxy();
+                await this.requestAuthorization();
                 return "";
             }
             // console.log("++++++got user_id:", r2.data.user_id);
@@ -681,7 +785,7 @@ class MixinEos {
             return r2.data.user_id;
         } catch (e) {
             console.error(e);
-            await this._requestUserIdFromProxy();
+            await this.requestAuthorization();
         }
         return "";
     }
@@ -701,13 +805,84 @@ class MixinEos {
         } else {
             ret = await this._getUserId();
         }
-        if (!window.wallet.identity) {
-            window.wallet.getIdentity();
-        }
+        // if (!window.wallet.identity) {
+        //     window.wallet.getIdentity();
+        // }
         return ret;
     }
 
+    getBindAccount = async () => {
+        let user_id = localStorage.getItem('user_id') as any;
+        if (!user_id) {
+            user_id = await this.getUserId();
+            localStorage.setItem('binded_account', "");
+        }
+
+        let account = localStorage.getItem('binded_account') as any;
+        if (account) {
+            return account;
+        }
+    
+        const _user_id = replaceAll(user_id, "-", "");
+        let user_id_dec = binaryToDecimal(fromHexString(_user_id));
+    
+        //    user_id = '0x' + _user_id.join('');
+        var params = {
+            json: true,
+            code: 'mixincrossss',
+            scope: 'mixincrossss',
+            table: 'bindaccounts',
+            lower_bound: user_id_dec,
+            upper_bound: user_id_dec,
+            limit: 1,
+            key_type: 'i128',
+            index_position: '2',
+            reverse :  false,
+            show_payer :  false
+        }
+        var r = await this.jsonRpc.get_table_rows(params);
+        // console.log("+++get table: bindaccounts:", r); 
+    
+        if (r.rows.length !== 0) {
+            account = r.rows[0].account;
+            localStorage.setItem('binded_account', account);
+            return account;
+        }
+    
+        let ret = await swal({
+            text: '未绑定EOS账号，需要创建吗？',
+            closeOnClickOutside: false,
+            buttons: {
+                cancel: "谢谢，不用!" as any,
+                catch: {
+                    text: "好的，帮我创建",
+                    value: "create",
+                },
+                defeat: {
+                    text: "我已经有EOS账号",
+                    value: "bind",
+                }
+            }
+        });
+        console.log(ret);
+        switch (ret) {
+            case "create":
+    //                return await create_account(user_id);
+                window.location.replace("http://192.168.1.8011");
+                throw Error("creating...");
+                break;
+            case "bind":
+                window.location.replace("http://192.168.1.8011");
+                throw Error("binding...");
+            default:
+                throw Error('user canceled');
+        }
+        throw Error('account not found!');
+    }
+
     requestAuthorization = async () => {
+        // console.trace();
+        // alert("requestAuthorization");
         localStorage.setItem('access_token', "");
         localStorage.setItem('user_id', "");
         localStorage.setItem('binded_account', "");

@@ -66,10 +66,6 @@ const _getBindAccount = async () => {
         user_id = await mixineos.getUserId();
         localStorage.setItem('binded_account', "");
     }
-    if (!user_id) {
-        alert("user id not found");
-        throw Error('user id not found');
-    }
 
     let account = localStorage.getItem('binded_account') as any;
     if (account) {
