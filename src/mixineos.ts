@@ -1,4 +1,4 @@
-import { supported_asset_ids } from "./constants";
+import { supported_asset_ids, MAIN_CONTRACT, TOKEN_CONTRACT } from "./constants";
 
 import { Api } from 'eosjs/dist/eosjs-api';
 import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
@@ -20,14 +20,14 @@ const swal: SweetAlert = _swal as any;
 
 import * as QRCode from 'qrcode'
 
+import { generateDepositTx, generateWithdrawTx } from './tx_generator'
+
 
 declare let window: any;
 declare let document: any;
 
 
 const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
-const MAIN_CONTRACT = 'mixincrossss';
-const TOKEN_CONTRACT = 'mixinwtokens';
 
 const CLIENT_ID = '49b00892-6954-4826-aaec-371ca165558a';
 // const auth_server = 'https://dex.uuos.io:2053'
@@ -210,41 +210,7 @@ class MixinEos {
         return ret2.data;
     }
     
-    generateDepositTx = async(account: string, amount: string, token_name: string, user_id: string, asset_id: string) => {
-        const _user_id = '0x' + replaceAll(user_id, "-", "");
-        const str_amount = parseFloat(amount).toFixed(8);
-
-        let transaction = await this.api.transact(
-            {
-            actions: [
-                {
-                    account: "mixincrossss",
-                    name: "deposit",
-                    authorization: [
-                        {
-                            actor: "mixincrossss",
-                            permission: "active"
-                        }
-                    ],
-                    data: {
-                        account: account,
-                        quantity: `${str_amount} ${token_name}`
-                    }
-                }
-            ]
-            },
-            {
-                broadcast: false,
-                sign: false,
-                blocksBehind: 3,
-                expireSeconds: 60*60
-            }
-        );
-        // console.log("++++transaction:", transaction);
-        const trx = this.api.deserializeTransaction(transaction.serializedTransaction);
-        // console.log("++++trx:", trx);
-        return [trx, transaction];
-    }
+    
 
     requestSignatures = (key_type: number, user_id: string, trace_id: string, transaction: any, payment: any, deposit: boolean=false) => {
         return new Promise((resove, reject) => {
@@ -394,7 +360,7 @@ class MixinEos {
         if (!asset_id) {
             throw Error("asset id not supported currently");
         }
-        const [tx, transaction] = await this.generateDepositTx(account, amount, token_name, user_id, asset_id);
+        const [tx, transaction] = await generateDepositTx(this.api, account, amount, token_name, user_id, asset_id);
 
         const expiration = tx.expiration
         const ref_block_num = tx.ref_block_num
@@ -507,55 +473,6 @@ class MixinEos {
         });
     }
 
-    generateWithdrawTx = async(account: string, amount: string, token_name: string) => {
-        let transaction = await this.api.transact(
-        {
-            actions: [
-            {
-                account: MAIN_CONTRACT,
-                name: "openwithdraw",
-                authorization: [
-                    {
-                    actor: account,
-                    permission: "active"
-                    }
-                ],
-                data: {
-                    account: account,
-                    symbol: `8,${token_name}`
-                }
-            },
-            {
-                account: TOKEN_CONTRACT,
-                name: "transfer",
-                authorization: [
-                    {
-                    actor: account,
-                    permission: "active"
-                    }
-                ],
-                data: {
-                    from: account,
-                    to: MAIN_CONTRACT,
-                    quantity: `${amount} ${token_name}`,
-                    memo: "withdraw"
-                }
-            }
-            ]
-        },
-        {
-            broadcast: false,
-            sign: false,
-            blocksBehind: 3,
-            expireSeconds: 60*10
-        });
-
-        // console.log("++++transaction:", transaction);
-        const trx = this.api.deserializeTransaction(transaction.serializedTransaction);
-        // console.log("++++trx:", trx);
-        return [trx, transaction];
-    }
-
     _requestWithdraw = async (amount: string, token_name: string) => {
         await this.prepare();
         const asset_id = supported_asset_ids[token_name];
@@ -564,7 +481,7 @@ class MixinEos {
         if (!asset_id) {
             throw Error("asset id not supported currently");
         }
-        const [tx, transaction] = await this.generateWithdrawTx(account, amount, token_name);
+        const [tx, transaction] = await generateWithdrawTx(this.api, account, amount, token_name);
         const signatures = await this.signTransaction(transaction);
         // tx.signatures = signatures;
         return await this.jsonRpc.push_transaction({...transaction, signatures});    

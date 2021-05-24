@@ -28,4 +28,7 @@ const supported_asset_ids = {
     "MEOS": "6cfe566e-4aad-470b-8c9a-2fd35b49c68d"
 } as any;
 
-export { supported_asset_ids }
+const MAIN_CONTRACT = 'mixincrossss';
+const TOKEN_CONTRACT = 'mixinwtokens';
+
+export { supported_asset_ids, MAIN_CONTRACT, TOKEN_CONTRACT }

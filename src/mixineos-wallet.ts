@@ -511,33 +511,31 @@ const InitWallet = (node_url: string, client_id: string, auth_proxy: boolean = f
 
     mixineos = new MixinEos(node_url, client_id, auth_proxy);
     window.mixineos = mixineos;
-    if (!inject) {
-        return;
-    }
-
-    window.wallet = new Index();
-    window.scatter = window.wallet;
-
-    window.scatter.loadPlugin(new ScatterEOS());
-
-    document.dispatchEvent(new CustomEvent('walletLoaded'));
-    document.dispatchEvent(new CustomEvent('scatterLoaded'));
-
-    document.addEventListener('walletLoaded', (event: any) => {
-        console.log("++++++++++walletLoaded", event);
-    });
-    
-    document.addEventListener('scatterLoaded', (event: any) => {
-        console.log("++++++++++scatterLoaded", event);
-    });
-    // document.dispatchEvent(new CustomEvent('scatterLoaded'));
-    console.log('+++++++++wallet v2 init done!!!');
 
     (async () => {
         await mixineos.onLoad();
         const info = await jsonRpc.get_info();
         CHAIN_ID = info.chain_id;
         console.log("+++++++++CHAIN_ID:", CHAIN_ID);
+        if (!inject) {
+            return;
+        }
+        window.wallet = new Index();
+        window.scatter = window.wallet;
+    
+        window.scatter.loadPlugin(new ScatterEOS());
+    
+        document.addEventListener('walletLoaded', (event: any) => {
+            console.log("++++++++++walletLoaded", event);
+        });
+        
+        document.addEventListener('scatterLoaded', (event: any) => {
+            console.log("++++++++++scatterLoaded", event);
+        });
+        // document.dispatchEvent(new CustomEvent('scatterLoaded'));
+        console.log('+++++++++wallet v2 init done!!!');
+        document.dispatchEvent(new CustomEvent('walletLoaded'));
+        document.dispatchEvent(new CustomEvent('scatterLoaded'));
     })();
 }
 
