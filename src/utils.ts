@@ -58,6 +58,10 @@ const int2Hex = (n: any) => {
     return r;
 }
 
+const hex2UserId = (user_id: string) => {
+    return user_id.substr(0, 8) + '-' + user_id.substr(8, 4) + '-' + user_id.substr(12, 4) + '-' + user_id.substr(16, 4) + '-' + user_id.substr(20, 12);
+}
+
 export {
     replaceAll,
     base64URLEncode,
