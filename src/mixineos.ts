@@ -427,7 +427,7 @@ class MixinEos {
             serializedContextFreeData: transaction.serializedContextFreeData
         });
         // this.closeAlert();
-
+        await delay(1000);
         this.setReminder('发送成功...');
         await delay(1000);
         // setTimeout(() => {
@@ -493,7 +493,7 @@ class MixinEos {
             throw Error("asset id not supported currently");
         }
         const [tx, transaction] = await generateWithdrawTx(this.api, user_id, account, amount, token_name);
-        const signatures = await this.signTransaction(transaction);
+        const signatures = await this.signTransaction(transaction, false);
 
         const ret = await this._sendTransaction(signatures, transaction);
         // this.finish();
@@ -698,7 +698,7 @@ class MixinEos {
         return signatures;
     }
 
-    signTransaction = async (transaction: any) => {
+    signTransaction = async (transaction: any, call_finish: boolean=true) => {
         await this.prepare();
         const trace_id = v4();
         const user_id = localStorage.getItem('user_id');
@@ -710,10 +710,14 @@ class MixinEos {
         var memo = `multisig|${user_id}|${trace_id}|${_tx_id}`;
         try {
             const ret = await this._requestSignaturesWithPayment(0, transaction, user_id, trace_id, asset_id, "0.1", memo);
-            this.finish();
+            if (call_finish) {
+                this.finish();
+            }
             return ret;
         } catch (e) {
-            this.finish();
+            if (call_finish) {
+                this.finish();
+            }
             throw e;
         }
     }
