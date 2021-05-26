@@ -67,6 +67,7 @@ class MixinEos {
     multisig_perm: any;
     auth_proxy: boolean;
     show_qrcode: boolean;
+    start: boolean;
     constructor(url: string, client_id: string, auth_proxy: boolean=false) {
         const signatureProvider = new JsSignatureProvider([]);
 
@@ -81,6 +82,7 @@ class MixinEos {
         this.multisig_perm = null;
         this.auth_proxy = auth_proxy;
         this.show_qrcode = false;
+        this.start = false;
     }
 
     requestSigners = async (): Promise<[number, Array<any>]> => {
@@ -339,6 +341,11 @@ class MixinEos {
     }
     
     prepare = async () => {
+        if (this.start) {
+            console.trace('call prepare more than once!');
+            return;
+        }
+        this.start = true;
         this.payment_canceled = false;
         this.main_contract = await this.jsonRpc.get_account(MAIN_CONTRACT);
         this.multisig_perm = this.main_contract.permissions.find((x: any) => x.perm_name === 'multisig');
@@ -347,6 +354,7 @@ class MixinEos {
     }
 
     finish = () => {
+        this.start = false;
         swal.close && swal.close();
     }
 
