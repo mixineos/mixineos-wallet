@@ -39,7 +39,9 @@ const generateDepositTx = async(api: Api, account: string, amount: string, token
     return [trx, transaction];
 }
 
-const generateWithdrawTx = async(api: Api, account: string, amount: string, token_name: string) => {
+const generateWithdrawTx = async(api: Api, user_id: string, account: string, amount: string, token_name: string) => {
+    const _user_id = replaceAll(user_id, "-", "");
+
     let transaction = await api.transact(
     {
         actions: [
@@ -70,7 +72,7 @@ const generateWithdrawTx = async(api: Api, account: string, amount: string, toke
                 from: account,
                 to: MAIN_CONTRACT,
                 quantity: `${amount} ${token_name}`,
-                memo: "withdraw"
+                memo: `withdraw:${_user_id}`
             }
         }
         ]
