@@ -6,6 +6,7 @@ const supported_mixin_ids = {
     "MMOB": "2dc0ab2919c77daea5cfc0b37a2beea02142e8fdc4f60409fd40b256bb13ea29",
     "MUSDT":"d4c304ffc3270ee0f3468913bd8027225201f0eccd336d47062d76c6e2b6bb27",
     "MEOS": "6ac4cbffda9952e7f0d924e4cfb6beb29d21854ac00bfbf749f086302d0f7e5d"
+    // "MCNB": "b9f49cf777dc4d03bc54cd1367eebca319f8603ea1ce18910d09e2c540c630d8"
 } as any
 
 const supported_mixin_tokens = {
