@@ -354,23 +354,28 @@ class MixinEos {
         swal.close && swal.close();
     }
     
-    showReminder = (text: string, show_progress=true) => {
-        if (show_progress) {
-            return swal({
-                text: text,
-                closeOnClickOutside: false,
-                buttons: [false],
-                icon:'https://mixin-www.zeromesh.net/assets/fb6f3c230cb846e25247dfaa1da94d8f.gif'
-            });    
-        } else {
-            return swal({
-                text: text,
-                closeOnClickOutside: false,
-                buttons: [false]
-            });
-        }
+    showProgress = (text: string) => {
+        return swal({
+            text: text,
+            closeOnClickOutside: false,
+            buttons: [false],
+            icon:'https://mixin-www.zeromesh.net/assets/fb6f3c230cb846e25247dfaa1da94d8f.gif'
+        });    
     }
 
+    showReminder = (text: string) => {
+        return swal({
+            text: text,
+            closeOnClickOutside: false,
+            buttons: {
+                defeat: {
+                    text: "确定",
+                    value: "bind",
+                }
+            },
+        });
+    }
+    
     showConfirm = (text: string, icon: string = 'warning') => {
         return swal({
             text: text,
@@ -471,24 +476,24 @@ class MixinEos {
         });
     }
 
-    _requestWithdraw = async (amount: string, token_name: string) => {
-        await this.prepare();
+    _requestWithdraw = async (user_id: string, account: string, amount: string, token_name: string) => {
+        // await this.prepare();
         const asset_id = supported_asset_ids[token_name];
-        const account = await this.getBindAccount();
+        // const account = await this.getBindAccount();
 
         if (!asset_id) {
             throw Error("asset id not supported currently");
         }
-        const [tx, transaction] = await generateWithdrawTx(this.api, account, amount, token_name);
+        const [tx, transaction] = await generateWithdrawTx(this.api, user_id, account, amount, token_name);
         const signatures = await this.signTransaction(transaction);
 
         const ret = await this._sendTransaction(signatures, transaction);
-        this.finish();
+        // this.finish();
         return ret;
         // return await this.jsonRpc.push_transaction({...transaction, signatures});    
     }
 
-    requestWithdraw = (amount: string, token_name: string) => {
+    requestWithdraw = (user_id: string, account: string, amount: string, token_name: string) => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
                 this.payment_canceled = true;
@@ -500,7 +505,7 @@ class MixinEos {
             //     reject(value);
             //     swal.close && swal.close();
             // });
-            this._requestWithdraw(amount, token_name).then(r => {
+            this._requestWithdraw(user_id, account, amount, token_name).then(r => {
                 swal.close && swal.close();
                 resolve(r);
             }).catch(e => {
@@ -619,7 +624,7 @@ class MixinEos {
 
     _requestSignaturesWithPayment = async (key_type: number, transaction: any, user_id: string, trace_id: string, asset_id: string, amount: string, memo: string) => {
         // const signer_urls = signers.map((x:any) => x.url);
-        await this.prepare();
+        // await this.prepare();
         let payment: any = null;
         for (var i=0;i<3;i++) {
             try {
@@ -674,7 +679,7 @@ class MixinEos {
             throw Error('payment timeout');
         }
 
-        this.showReminder(`正在请求多重签名(0/${this.threshold})`);
+        this.showProgress(`正在请求多重签名(0/${this.threshold})`);
     
         let _signatures = await this.requestSignatures(key_type, user_id, trace_id, transaction, payment);
         let signatures = _signatures as Array<string>;
@@ -709,13 +714,13 @@ class MixinEos {
         try {
             const r = await this.jsonRpc.get_currency_balance('mixinwtokens', account, symbol);
             if (r.length === 0) {
-                return "0";
+                return 0.0;
             }
             // console.log(r);
-            return r[0].split(' ')[0];
+            return parseFloat(r[0].split(' ')[0]);
         } catch(e) {
             console.log(e);
-            return "0";
+            return 0.0;
         }
     }
 
@@ -846,6 +851,7 @@ class MixinEos {
             localStorage.setItem('binded_account', account);
             return account;
         }
+        return "";
     
         let ret = await swal({
             text: '未绑定EOS账号，需要创建吗？',
