@@ -6,7 +6,6 @@ const supported_mixin_ids = {
     "MMOB": "2dc0ab2919c77daea5cfc0b37a2beea02142e8fdc4f60409fd40b256bb13ea29",
     "MUSDT":"d4c304ffc3270ee0f3468913bd8027225201f0eccd336d47062d76c6e2b6bb27",
     "MEOS": "6ac4cbffda9952e7f0d924e4cfb6beb29d21854ac00bfbf749f086302d0f7e5d"
-    // "MCNB": "b9f49cf777dc4d03bc54cd1367eebca319f8603ea1ce18910d09e2c540c630d8"
 } as any
 
 const supported_mixin_tokens = {
@@ -29,7 +28,30 @@ const supported_asset_ids = {
     "MEOS": "6cfe566e-4aad-470b-8c9a-2fd35b49c68d"
 } as any;
 
+// helloworld6
+const CLIENT_ID = '3e72ca0c-1bab-49ad-aa0a-4d8471d375e7';
+
+// const NODE_URL = 'https://api.eosn.io';
+// const NODE_URL = 'https://api.eosflare.io';
+const NODE_URL = 'https://eos.blockeden.cn';
+
+// const AUTH_SERVER = 'https://dex.uuos.io:2053'
+const AUTH_SERVER = 'http://192.168.1.3:2053';
+
+const VALID_ACCOUNT_CHARS = 'abcdefghijklmnopqrstuvwxyz12345';
+
 const MAIN_CONTRACT = 'mixincrossss';
 const TOKEN_CONTRACT = 'mixinwtokens';
 
-export { supported_asset_ids, MAIN_CONTRACT, TOKEN_CONTRACT }
+export {
+    supported_asset_ids,
+    supported_mixin_ids,
+    supported_mixin_tokens,
+    CLIENT_ID,
+    NODE_URL,
+    AUTH_SERVER,
+    VALID_ACCOUNT_CHARS,
+    MAIN_CONTRACT,
+    TOKEN_CONTRACT
+}
+

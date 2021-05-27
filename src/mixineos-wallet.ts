@@ -9,12 +9,10 @@ import { SweetAlert } from 'sweetalert/typings/core';
 const swal: SweetAlert = _swal as any;
 
 import { MixinEos } from "./mixineos"
-
-const CLIENT_ID = '49b00892-6954-4826-aaec-371ca165558a';
-const NODE_URL = 'https://api.eosn.io';
+import { NODE_URL } from "./constants"
 
 let CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906'
-let jsonRpc = new JsonRpc('https://api.eosn.io');
+let jsonRpc = new JsonRpc(NODE_URL);
 let mixineos: any = null;
 
 // let jsonRpc = new JsonRpc('http://192.168.1.3:9000');

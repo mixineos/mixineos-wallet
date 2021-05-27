@@ -3,7 +3,8 @@ const path = require('path');
 module.exports = {
     entry: {
         mixineos_wallet: './src/mixineos-wallet.ts',
-        mixineos: './src/mixineos.ts'
+        mixineos: './src/mixineos.ts',
+        constants: './src/constants.ts'
     },
     devtool: 'inline-source-map',
     mode: 'development',

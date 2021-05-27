@@ -343,7 +343,6 @@ class MixinEos {
     prepare = async () => {
         if (this.start) {
             console.trace('call prepare more than once!');
-            return;
         }
         this.start = true;
         this.payment_canceled = false;
@@ -408,7 +407,7 @@ class MixinEos {
 
     showPaymentCheckingReminder = () => {
         return swal({
-            text: '正在检查支付结果...',
+            text: '正在等待确认...',
             closeOnClickOutside: false,
             button: {
                 text: "取消",
@@ -607,7 +606,7 @@ class MixinEos {
         console.log("++++++QRCode.toDataURL", qrcodeUrl);
 
         let ret = await swal({
-            text: '正在检查支付结果...',
+            text: '正在等待确认...',
             closeOnClickOutside: false,
             closeOnEsc: false,
             buttons: {
@@ -715,9 +714,7 @@ class MixinEos {
             }
             return ret;
         } catch (e) {
-            if (call_finish) {
-                this.finish();
-            }
+            this.finish();
             throw e;
         }
     }
