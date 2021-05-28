@@ -1,5 +1,3 @@
-import { supported_asset_ids, MAIN_CONTRACT, TOKEN_CONTRACT } from "./constants";
-
 import { Api } from 'eosjs/dist/eosjs-api';
 import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
 import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
@@ -39,21 +37,22 @@ import {
     int2Hex
 } from './utils'
 
+import { supported_asset_ids,
+    MAIN_CONTRACT,
+    TOKEN_CONTRACT,
+    PROXY_AUTH_SERVER,
+    CHAIN_ID,
+    SIGN_ASSET_TOKEN_ID,
+    OAUTH_URL
+} from "./constants";
+
+
 declare let window: any;
 declare let document: any;
 
-
-const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
-
-const CLIENT_ID = '49b00892-6954-4826-aaec-371ca165558a';
-// const AUTH_SERVER = 'https://dex.uuos.io:2053'
-const AUTH_SERVER = 'http://192.168.1.3:2053'
-
 // const paymentUrl = 'https://mixin-api.zeromesh.net/payments'
-// const paymentUrl = `${AUTH_SERVER}/request_payment`
+// const paymentUrl = `${PROXY_AUTH_SERVER}/request_payment`
 
-const oauthUrl = "https://mixin-api.zeromesh.net/oauth/token"
-const cnb_asset_id = "965e5c6e-434c-3fa9-b780-c50f43cd955c";
 
 
 class MixinEos {
@@ -121,7 +120,7 @@ class MixinEos {
 
     _requestPaymentFromProxy = async (payment: any) => {        
         const user_id = localStorage.getItem('user_id');
-        const paymentUrl = `${AUTH_SERVER}/request_payment`
+        const paymentUrl = `${PROXY_AUTH_SERVER}/request_payment`
         const ret = await fetch(paymentUrl, {
             method: "POST",
             headers: {
@@ -173,7 +172,7 @@ class MixinEos {
         // console.log("+++++++++payment return:", ret2);
         // TODO check error details
         if (ret2.error) {
-            throw Error(ret2.error);
+            throw new Error(ret2.error);
         }
         return ret2.data;
     }
@@ -240,10 +239,7 @@ class MixinEos {
                     } else {
                         trx_data += transaction.serializedTransaction;
                     }
-                    //(transaction.serializedTransaction instanceof String)
-                    // } else {
-                    //     throw Error("unknown serialized transaction type");
-                    // }
+
                     if (transaction.serializedContextFreeData) {
                         trx_data += toHexString(sha256(transaction.serializedContextFreeData));
                     } else {
@@ -444,7 +440,7 @@ class MixinEos {
         const asset_id = supported_asset_ids[token_name];
 
         if (!asset_id) {
-            throw Error("asset id not supported currently");
+            throw new Error("asset id not supported currently");
         }
         const [tx, transaction] = await generateDepositTx(this.api, account, amount, token_name, user_id, asset_id);
 
@@ -489,7 +485,7 @@ class MixinEos {
         // const account = await this.getBindAccount();
 
         if (!asset_id) {
-            throw Error("asset id not supported currently");
+            throw new Error("asset id not supported currently");
         }
         const [tx, transaction] = await generateWithdrawTx(this.api, user_id, account, amount, token_name);
         const signatures = await this.signTransaction(transaction, false);
@@ -571,11 +567,11 @@ class MixinEos {
         await this.prepare();
         const amount = "0.1"
         const trace_id = v4();
-        const asset_id = '965e5c6e-434c-3fa9-b780-c50f43cd955c';
+        const asset_id = SIGN_ASSET_TOKEN_ID;
         // const token_name = supported_mixin_ids[asset_id];
         // const asset_id = supported_asset_ids[token_name];
         if (!asset_id) {
-            throw Error("asset id not supported currently");
+            throw new Error("asset id not supported currently");
         }
 
         const [tx, transaction] = await generateBindAccountTx(this.api, user_id, account);
@@ -642,12 +638,12 @@ class MixinEos {
             }
             if (this.payment_canceled) {
                 console.log('payment canceled');
-                throw Error('canceled');
+                throw new Error('canceled');
             }
             await delay(1000);
         }
         if (!payment) {
-            throw Error("payment request failed!");
+            throw new Error("payment request failed!");
         }
 
         var pay_link = `mixin://codes/${payment.code_id}`;
@@ -669,7 +665,7 @@ class MixinEos {
             await delay(1000);
             if (this.payment_canceled) {
                 console.log('payment canceled...');
-                throw Error('canceled');
+                throw new Error('canceled');
             }
             payment = await this.requestPayment(trace_id, asset_id, amount, memo);
             if (payment.error) {
@@ -683,7 +679,7 @@ class MixinEos {
         };
     
         if (!paid) {
-            throw Error('payment timeout');
+            throw new Error('payment timeout');
         }
 
         this.showProgress(`正在请求多重签名(0/${this.threshold})`);
@@ -704,7 +700,7 @@ class MixinEos {
         var serializedTransaction = transaction.serializedTransaction;
         var tx_id = toHexString(eosjs_sha256(Buffer.from(serializedTransaction)));
         
-        const asset_id = "965e5c6e-434c-3fa9-b780-c50f43cd955c";
+        const asset_id = SIGN_ASSET_TOKEN_ID;
         var _tx_id = Buffer.from(fromHexString(tx_id)).toString('base64');
         var memo = `multisig|${user_id}|${trace_id}|${_tx_id}`;
         try {
@@ -779,7 +775,7 @@ class MixinEos {
         }
         console.log("+++++++++userid", user_id);
         try {
-            const url = `${AUTH_SERVER}/me?user_id=${user_id}`;
+            const url = `${PROXY_AUTH_SERVER}/me?user_id=${user_id}`;
             console.log(url);
             const r = await fetch(url, {
                 method: "GET",
@@ -823,21 +819,10 @@ class MixinEos {
         return ret;
     }
 
-    getBindAccount = async () => {
-        let user_id = localStorage.getItem('user_id') as any;
-        if (!user_id) {
-            user_id = await this.getUserId();
-            localStorage.setItem('binded_account', "");
-        }
-
-        let account = localStorage.getItem('binded_account') as any;
-        if (account) {
-            return account;
-        }
-    
+    _getBindAccount = async (user_id: string) => {
         const _user_id = replaceAll(user_id, "-", "");
         let user_id_dec = binaryToDecimal(fromHexString(_user_id));
-    
+
         //    user_id = '0x' + _user_id.join('');
         var params = {
             json: true,
@@ -856,11 +841,26 @@ class MixinEos {
         // console.log("+++get table: bindaccounts:", r); 
     
         if (r.rows.length !== 0) {
-            account = r.rows[0].account;
+            const account = r.rows[0].account;
             localStorage.setItem('binded_account', account);
             return account;
         }
-        return "";
+        return "";        
+    }
+
+    getBindAccount = async () => {
+        let user_id = localStorage.getItem('user_id') as any;
+        if (!user_id) {
+            user_id = await this.getUserId();
+            localStorage.setItem('binded_account', "");
+        }
+
+        let account = localStorage.getItem('binded_account') as any;
+        if (account) {
+            return account;
+        }
+    
+        return this._getBindAccount(user_id)
     
         let ret = await swal({
             text: '未绑定EOS账号，需要创建吗？',
@@ -883,15 +883,15 @@ class MixinEos {
             case "create":
     //                return await create_account(user_id);
                 window.location.replace("http://192.168.1.8011");
-                throw Error("creating...");
+                throw new Error("creating...");
                 break;
             case "bind":
                 window.location.replace("http://192.168.1.8011");
-                throw Error("binding...");
+                throw new Error("binding...");
             default:
-                throw Error('user canceled');
+                throw new Error('user canceled');
         }
-        throw Error('account not found!');
+        throw new Error('account not found!');
     }
 
     requestAuthorization = async () => {
@@ -901,7 +901,7 @@ class MixinEos {
         localStorage.setItem('user_id', "");
         localStorage.setItem('binded_account', "");
         if (this.auth_proxy) {
-            const url = `${AUTH_SERVER}?ref=${window.location.href}`
+            const url = `${PROXY_AUTH_SERVER}?ref=${window.location.href}`
             console.log(url);
             window.location.replace(url);
         } else {
@@ -929,7 +929,7 @@ class MixinEos {
             "code": authorizationCode,
             "code_verifier": localStorage.getItem("verifier")
         };
-        const ret = await fetch(oauthUrl, {
+        const ret = await fetch(OAUTH_URL, {
             method: "POST",
             headers: {
                 "Content-type": "application/json",
@@ -969,7 +969,10 @@ class MixinEos {
         if (window.location.pathname === '/auth') {
             return await this.onAuth();
         }
-        await this.getUserId();
+        const user_id = await this.getUserId();
+        if (user_id) {
+            await this._getBindAccount(user_id);
+        }
     }
 }
 

@@ -32,16 +32,23 @@ const supported_asset_ids = {
 const CLIENT_ID = '3e72ca0c-1bab-49ad-aa0a-4d8471d375e7';
 
 // const NODE_URL = 'https://api.eosn.io';
-// const NODE_URL = 'https://api.eosflare.io';
-const NODE_URL = 'https://eos.blockeden.cn';
+const NODE_URL = 'https://api.eosflare.io';
+// const NODE_URL = 'https://eos.blockeden.cn';
 
-// const AUTH_SERVER = 'https://dex.uuos.io:2053'
-const AUTH_SERVER = 'http://192.168.1.3:2053';
+// const PROXY_AUTH_SERVER = 'https://dex.uuos.io:2053'
+const PROXY_AUTH_SERVER = 'http://192.168.1.3:2053'
 
 const VALID_ACCOUNT_CHARS = 'abcdefghijklmnopqrstuvwxyz12345';
 
 const MAIN_CONTRACT = 'mixincrossss';
 const TOKEN_CONTRACT = 'mixinwtokens';
+
+const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
+
+const OAUTH_URL = "https://mixin-api.zeromesh.net/oauth/token"
+
+const SIGN_ASSET_TOKEN_ID = "965e5c6e-434c-3fa9-b780-c50f43cd955c"; //CNB
+
 
 export {
     supported_asset_ids,
@@ -49,9 +56,11 @@ export {
     supported_mixin_tokens,
     CLIENT_ID,
     NODE_URL,
-    AUTH_SERVER,
+    PROXY_AUTH_SERVER,
     VALID_ACCOUNT_CHARS,
     MAIN_CONTRACT,
-    TOKEN_CONTRACT
+    TOKEN_CONTRACT,
+    CHAIN_ID,
+    OAUTH_URL,
+    SIGN_ASSET_TOKEN_ID
 }
-
