@@ -524,7 +524,7 @@ const InitWallet = ({
         node_url: node_url,
         client_id,
         auth_proxy,
-        debug: false
+        debug: debug
     });
 
     window.mixineos = mixineos;
