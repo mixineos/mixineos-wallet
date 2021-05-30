@@ -97,7 +97,7 @@ const _getBindAccount = async () => {
     }
 
     let ret = await swal({
-        text: '未绑定EOS账号，需要创建吗？',
+        text: '未关联EOS账号，需要创建吗？',
         closeOnClickOutside: false,
         buttons: {
             cancel: "谢谢，不用!" as any,
@@ -502,12 +502,31 @@ export class Index {
 // });
 // document.dispatchEvent(new CustomEvent('walletLoaded'));
 
-const InitWallet = (node_url: string, client_id: string, auth_proxy: boolean = false, inject: boolean=true) => {
-    if (window.wallet) {
+const InitWallet = ({
+        node_url,
+        client_id,
+        auth_proxy = false,
+        debug = false,
+        inject = false
+    } : {
+        node_url: string,
+        client_id: string,
+        auth_proxy?: boolean,
+        debug?: boolean,
+        inject?: boolean
+    }) => {
+
+    if (!!window.mixineos) {
         return;
     }
 
-    mixineos = new MixinEos(node_url, client_id, auth_proxy);
+    mixineos = new MixinEos({
+        node_url: node_url,
+        client_id,
+        auth_proxy,
+        debug: false
+    });
+
     window.mixineos = mixineos;
 
     (async () => {

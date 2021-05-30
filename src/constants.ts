@@ -50,6 +50,11 @@ const OAUTH_URL = "https://mixin-api.zeromesh.net/oauth/token"
 
 const SIGN_ASSET_TOKEN_ID = "965e5c6e-434c-3fa9-b780-c50f43cd955c"; //CNB
 
+const DEBUG_SIGNER_NODES = [
+    "http://192.168.1.3:2053",
+    "http://192.168.1.3:2083",
+    "http://192.168.1.3:2087",
+]
 
 export {
     supported_asset_ids,
@@ -63,5 +68,6 @@ export {
     TOKEN_CONTRACT,
     CHAIN_ID,
     OAUTH_URL,
-    SIGN_ASSET_TOKEN_ID
+    SIGN_ASSET_TOKEN_ID,
+    DEBUG_SIGNER_NODES
 }

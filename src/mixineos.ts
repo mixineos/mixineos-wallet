@@ -43,7 +43,8 @@ import { supported_asset_ids,
     PROXY_AUTH_SERVER,
     CHAIN_ID,
     SIGN_ASSET_TOKEN_ID,
-    OAUTH_URL
+    OAUTH_URL,
+    DEBUG_SIGNER_NODES
 } from "./constants";
 
 
@@ -67,10 +68,26 @@ class MixinEos {
     auth_proxy: boolean;
     show_qrcode: boolean;
     start: boolean;
-    constructor(url: string, client_id: string, auth_proxy: boolean=false) {
+
+    signer_urls: string[];
+    debug: boolean;
+
+    isRequestingAuthorization: boolean;
+
+    constructor({
+        node_url,
+        client_id,
+        auth_proxy = false,
+        debug = false
+    } : {
+        node_url: string;
+        client_id: string;
+        auth_proxy?: boolean;
+        debug?: boolean;
+    }) {
         const signatureProvider = new JsSignatureProvider([]);
 
-        this.jsonRpc = new JsonRpc(url);
+        this.jsonRpc = new JsonRpc(node_url);
         this.api = new Api({
             rpc: this.jsonRpc, signatureProvider, chainId: CHAIN_ID, textDecoder: new TextDecoder(), textEncoder: new TextEncoder()
         });
@@ -82,6 +99,11 @@ class MixinEos {
         this.auth_proxy = auth_proxy;
         this.show_qrcode = false;
         this.start = false;
+
+        this.signer_urls = null;
+        this.debug = debug;
+
+        this.isRequestingAuthorization = false;
     }
 
     requestSigners = async (): Promise<[number, Array<any>]> => {
@@ -201,6 +223,8 @@ class MixinEos {
             });
             let r2 = await r.json();
             if (r2.error) {
+                console.log(r2);
+                throw new Error(JSON.stringify(r2));
                 return null;
             }
             if (r2.data) {
@@ -213,16 +237,27 @@ class MixinEos {
 
     requestSignatures = (key_type: number, user_id: string, trace_id: string, transaction: any, payment: any) => {
         return new Promise((resove, reject) => {
-            setTimeout(() => reject('time out'), 120000);
+            setTimeout(() => {
+                this.cancel();
+                reject('time out')
+            }, 120000);
+
             let signatures: string[] = [];
             const trx = this.api.deserializeTransaction(transaction.serializedTransaction);
             console.log("++++++requestSignatures:", trx);
             let success_return = this.signers.length;
-            this.signers.forEach((signer: any) => {
-                const url = signer.url;
+            for (var i in this.signer_urls) {
+                const url = this.signer_urls[i];
+                const signer = this.signers[i];
+            // this.signer_urls.forEach((url: string) => {
                 // console.log("++++++signer url:", url);
                 this.request_signature(key_type, url, user_id, trace_id, trx, payment).then(data => {
                     if (!data) {
+                        if (this.isCanceled()) {
+                            reject("canceled");
+                            return;
+                        }
+
                         success_return -= 1;
                         if (success_return < this.threshold) {
                             reject("request error");
@@ -272,7 +307,7 @@ class MixinEos {
                 }).catch(e => {
                     console.log(e);
                 });
-            });
+            };
         });
     }
 
@@ -346,6 +381,19 @@ class MixinEos {
         this.multisig_perm = this.main_contract.permissions.find((x: any) => x.perm_name === 'multisig');
         this.threshold = this.multisig_perm.required_auth.threshold;
         this.signers = await this.requestSigners();
+        if (this.debug) {
+            this.signer_urls = this.signers.map((x: any) => x.url);
+        } else {
+            this.signer_urls = DEBUG_SIGNER_NODES;
+        }
+    }
+
+    cancel = () => {
+        this.payment_canceled = true;
+    }
+
+    isCanceled = () => {
+        return this.payment_canceled;
     }
 
     finish = () => {
@@ -464,7 +512,7 @@ class MixinEos {
     requestDeposit = (account: string, amount: string, user_id: string, token_name: string) => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                this.payment_canceled = true;
+                this.cancel();
                 this.closeAlert();
                 reject('time out');
             }, 120000);
@@ -499,7 +547,7 @@ class MixinEos {
     requestWithdraw = (user_id: string, account: string, amount: string, token_name: string) => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                this.payment_canceled = true;
+                this.cancel();
                 this.closeAlert();
                 reject('time out');
             }, 120000);
@@ -544,7 +592,7 @@ class MixinEos {
     requestCreateAccount = (user_id: string, new_account: string, amount: string) => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                this.payment_canceled = true;
+                this.cancel();
                 this.closeAlert();
                 reject('time out');
             }, 120000);
@@ -620,7 +668,7 @@ class MixinEos {
                 copy(payment_link);
                 break;
             default:
-                this.payment_canceled = true;
+                this.cancel();
         }
         // swal.close && swal.close();
     }
@@ -636,7 +684,8 @@ class MixinEos {
             } catch (e) {
                 console.error(e);
             }
-            if (this.payment_canceled) {
+
+            if (this.isCanceled()) {
                 console.log('payment canceled');
                 throw new Error('canceled');
             }
@@ -651,7 +700,7 @@ class MixinEos {
         if (mobileAndTabletCheck() && !this.show_qrcode) {
             this.showPaymentCheckingReminder().then((value) => {
                 if (value) {
-                    this.payment_canceled = true;
+                    this.cancel();
                     // swal.close();
                 }
             });
@@ -663,7 +712,7 @@ class MixinEos {
         var paid = false;
         for (var i=0;i<90;i++) {
             await delay(1000);
-            if (this.payment_canceled) {
+            if (this.isCanceled()) {
                 console.log('payment canceled...');
                 throw new Error('canceled');
             }
@@ -845,7 +894,7 @@ class MixinEos {
             localStorage.setItem('binded_account', account);
             return account;
         }
-        return "";        
+        return "";
     }
 
     getBindAccount = async () => {
@@ -863,7 +912,7 @@ class MixinEos {
         return this._getBindAccount(user_id)
     
         let ret = await swal({
-            text: '未绑定EOS账号，需要创建吗？',
+            text: '未关联EOS账号，需要创建吗？',
             closeOnClickOutside: false,
             buttons: {
                 cancel: "谢谢，不用!" as any,
@@ -895,11 +944,18 @@ class MixinEos {
     }
 
     requestAuthorization = async () => {
-        // console.trace();
-        // alert("requestAuthorization" + this.auth_proxy);
+        console.trace();
+        alert("requestAuthorization" + this.auth_proxy);
+        // return;
         localStorage.setItem('access_token', "");
         localStorage.setItem('user_id', "");
         localStorage.setItem('binded_account', "");
+
+        if (this.isRequestingAuthorization) {
+            return;
+        }
+        this.isRequestingAuthorization = true;
+
         if (this.auth_proxy) {
             const url = `${PROXY_AUTH_SERVER}?ref=${window.location.href}`
             console.log(url);
@@ -937,6 +993,7 @@ class MixinEos {
             body: JSON.stringify(args),
         });
         const ret2 = await ret.json();
+        console.log("++++error:", JSON.stringify(ret2));
         if (ret2.error) {
             await this.requestAuthorization();
         }
@@ -969,6 +1026,7 @@ class MixinEos {
         if (window.location.pathname === '/auth') {
             return await this.onAuth();
         }
+
         const user_id = await this.getUserId();
         if (user_id) {
             await this._getBindAccount(user_id);
