@@ -382,9 +382,9 @@ class MixinEos {
         this.threshold = this.multisig_perm.required_auth.threshold;
         this.signers = await this.requestSigners();
         if (this.debug) {
-            this.signer_urls = this.signers.map((x: any) => x.url);
-        } else {
             this.signer_urls = DEBUG_SIGNER_NODES;
+        } else {
+            this.signer_urls = this.signers.map((x: any) => x.url);
         }
     }
 
@@ -944,8 +944,8 @@ class MixinEos {
     }
 
     requestAuthorization = async () => {
-        console.trace();
-        alert("requestAuthorization" + this.auth_proxy);
+        // console.trace();
+        // alert("requestAuthorization" + this.auth_proxy);
         // return;
         localStorage.setItem('access_token', "");
         localStorage.setItem('user_id', "");
