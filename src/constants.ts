@@ -31,12 +31,13 @@ const supported_asset_ids = {
 // helloworld6
 const CLIENT_ID = '3e72ca0c-1bab-49ad-aa0a-4d8471d375e7';
 
-// const NODE_URL = 'https://api.eosn.io';
-const NODE_URL = 'https://api.eosflare.io';
+const NODE_URL = 'https://api.eosn.io';
+// const NODE_URL = 'https://api.eosflare.io';
 // const NODE_URL = 'https://eos.blockeden.cn';
 
 // const PROXY_AUTH_SERVER = 'https://dex.uuos.io:2053'
-const PROXY_AUTH_SERVER = 'http://192.168.1.3:2053'
+const PROXY_AUTH_SERVER = 'https://dex.uuos.io:2087' //MixinEOS.TEST
+// const PROXY_AUTH_SERVER = 'http://192.168.1.3:2053'
 
 const VALID_ACCOUNT_CHARS = 'abcdefghijklmnopqrstuvwxyz12345';
 
