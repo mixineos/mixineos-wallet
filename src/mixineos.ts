@@ -848,7 +848,7 @@ class MixinEos {
     }
 
     getUserId = async () => {
-        console.log("++++++=getUserId");
+        // console.log("++++++=getUserId");
         if (window.location.pathname === '/auth') {
             while(true) {
                 console.log("++++++++getUserId: onAuth...");

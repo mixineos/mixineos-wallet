@@ -533,7 +533,7 @@ const InitWallet = ({
         await mixineos.onLoad();
         const info = await jsonRpc.get_info();
         CHAIN_ID = info.chain_id;
-        console.log("+++++++++CHAIN_ID:", CHAIN_ID);
+        // console.log("+++++++++CHAIN_ID:", CHAIN_ID);
         if (!inject) {
             return;
         }
