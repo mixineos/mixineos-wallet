@@ -23,7 +23,9 @@ import {
     generateDepositTx,
     generateWithdrawTx,
     generateCreateAccountTx,
-    generateBindAccountTx
+    generateBindAccountTx,
+    generateChangePermTx,
+    generateRemoveMultisigTx
 } from './tx_generator'
 
 import {
@@ -645,6 +647,88 @@ class MixinEos {
         return this._requestBindAccount(user_id, account);
     }
 
+    _requestChangePerm = async (user_id: string, account: string, owner_key: string, active_key: string, remove_multisig: boolean) => {
+        await this.prepare();
+        const [tx, transaction] = await generateChangePermTx(this.api, user_id, account, owner_key, active_key, remove_multisig);
+
+        const expiration = tx.expiration
+        const ref_block_num = tx.ref_block_num
+        const ref_block_prefix = tx.ref_block_prefix
+
+        // asset_id="965e5c6e-434c-3fa9-b780-c50f43cd955c"
+        const trace_id = v4();
+        const asset_id = SIGN_ASSET_TOKEN_ID;
+        const memo = `changeperm|${user_id}|${trace_id}|${account}|${remove_multisig}|${owner_key}|${active_key}|${expiration}|${ref_block_num}|${ref_block_prefix}`
+        try {
+            const signatures = await this._requestSignaturesWithPayment(1, transaction, user_id, trace_id, asset_id, "0.1", memo);
+            const ret = await this._sendTransaction(signatures, transaction);
+            this.finish();
+            return ret;
+        } catch (e) {
+            this.finish();
+            throw e;
+        }
+    }
+
+    requestChangePerm = (user_id: string, account: string, owner_key: string, active_key: string, remove_multisig: boolean) => {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                this.cancel();
+                this.closeAlert();
+                reject('time out');
+            }, 120000);
+            // this.showPaymentCheckingReminder().then((value) => {
+            //     this.payment_canceled = true;
+            //     reject(value);
+            //     swal.close && swal.close();
+            // });
+            this._requestChangePerm(user_id, account, owner_key, active_key, remove_multisig).then((r: any) => {
+                swal.close && swal.close();
+                resolve(r);
+            }).catch(e => {
+                swal.close && swal.close();
+                reject(e);
+            });
+        });
+    }
+
+    _removeMultisig = async (account: string) => {
+        // await this.prepare();
+        const asset_id = SIGN_ASSET_TOKEN_ID
+        console.log("+++++removeMultisig:", account);
+
+        if (!asset_id) {
+            throw new Error("asset id not supported currently");
+        }
+
+        const [tx, transaction] = await generateRemoveMultisigTx(this.api, account);
+        const signatures = await this.signTransaction(transaction, false);
+
+        const ret = await this._sendTransaction(signatures, transaction);
+        // this.finish();
+        return ret;
+        // return await this.jsonRpc.push_transaction({...transaction, signatures});    
+    }
+
+    removeMultisig = (account: string) => {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                this.cancel();
+                this.closeAlert();
+                reject('time out');
+            }, 120000);
+
+            this._removeMultisig(account).then((r: any) => {
+                swal.close && swal.close();
+                resolve(r);
+            }).catch(e => {
+                console.log(e);
+                swal.close && swal.close();
+                reject(e);
+            });
+        });
+    }
+
     _showPaymentQrcode = async (payment_link: string) => {
         let qrcodeUrl = await QRCode.toDataURL(payment_link);
         console.log("++++++QRCode.toDataURL", qrcodeUrl);
@@ -875,8 +959,8 @@ class MixinEos {
         //    user_id = '0x' + _user_id.join('');
         var params = {
             json: true,
-            code: 'mixincrossss',
-            scope: 'mixincrossss',
+            code: MAIN_CONTRACT,
+            scope: MAIN_CONTRACT,
             table: 'bindaccounts',
             lower_bound: user_id_dec,
             upper_bound: user_id_dec,
@@ -909,38 +993,7 @@ class MixinEos {
             return account;
         }
     
-        return this._getBindAccount(user_id)
-    
-        let ret = await swal({
-            text: '未关联EOS账号，需要创建吗？',
-            closeOnClickOutside: false,
-            buttons: {
-                cancel: "谢谢，不用!" as any,
-                catch: {
-                    text: "好的，帮我创建",
-                    value: "create",
-                },
-                defeat: {
-                    text: "我已经有EOS账号",
-                    value: "bind",
-                }
-            }
-        });
-        console.log(ret);
-        // TODO fix url
-        switch (ret) {
-            case "create":
-    //                return await create_account(user_id);
-                window.location.replace("http://192.168.1.8011");
-                throw new Error("creating...");
-                break;
-            case "bind":
-                window.location.replace("http://192.168.1.8011");
-                throw new Error("binding...");
-            default:
-                throw new Error('user canceled');
-        }
-        throw new Error('account not found!');
+        return this._getBindAccount(user_id);
     }
 
     requestAuthorization = async () => {
@@ -1031,6 +1084,34 @@ class MixinEos {
         if (user_id) {
             await this._getBindAccount(user_id);
         }
+    }
+
+    getWithdrawFee = async (tokenName: string) => {
+        const r = await this.jsonRpc.get_table_rows(
+            {
+                json: true,
+                code: MAIN_CONTRACT,
+                scope: MAIN_CONTRACT,
+                table: 'tokens',
+                lower_bound: '',
+                upper_bound: '',
+                limit: 100,
+                key_type: 'i64',
+                index_position: '1',
+                reverse :  true,
+                show_payer :  false
+            }
+        );
+
+        if (r.rows.length === 0) {
+            return 0;
+        }
+
+        const withdraw = r.rows.find((x: any) => x.sym === `8,${tokenName}`);
+        if (!!withdraw) {
+            return parseFloat(withdraw.withdraw_fee.split(' ')[0]);
+        }
+        return 0;
     }
 }
 
