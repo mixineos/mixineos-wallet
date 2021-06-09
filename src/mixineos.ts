@@ -1,3 +1,4 @@
+import "./styles.css"
 import { Api } from 'eosjs/dist/eosjs-api';
 import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
 import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
@@ -200,39 +201,57 @@ class MixinEos {
         }
         return ret2.data;
     }
+
+    _request_signature = async (key_type: number, url: string, user_id: string, trace_id: string, trx: any, payment: any) => {
+        var full_url: any
+        if (key_type == 0) {
+            full_url = `${url}/request_signer_signature`;
+        } else {
+            full_url = `${url}/request_manager_signature`;
+        }
+        console.log("++++++url:", full_url);
+        let r = await fetch(full_url, {
+            method: "POST",
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: JSON.stringify({
+                user_id: user_id,
+                trace_id: trace_id,
+                trx: trx,
+                payment: payment
+            }),
+            // credentials: 'include'
+        });
+        return await r.json();
+    }
     
     request_signature = async (key_type: number, url: string, user_id: string, trace_id: string, trx: any, payment: any) => {
+        let ret: any;
         for (var i=0;i<60;i++) {
-            var full_url: any
-            if (key_type == 0) {
-                full_url = `${url}/request_signer_signature`;
-            } else {
-                full_url = `${url}/request_manager_signature`;
-            }
-            console.log("++++++url:", full_url);
-            let r = await fetch(full_url, {
-                method: "POST",
-                headers: {
-                    "Content-type": "application/json",
-                },
-                body: JSON.stringify({
-                    user_id: user_id,
-                    trace_id: trace_id,
-                    trx: trx,
-                    payment: payment
-                }),
-                // credentials: 'include'
-            });
-            let r2 = await r.json();
-            if (r2.error) {
-                console.log(r2);
-                throw new Error(JSON.stringify(r2));
-                return null;
-            }
-            if (r2.data) {
-                return r2.data;
+            try {
+                ret = await this._request_signature(key_type, url, user_id, trace_id, trx, payment);
+                if (ret.error) {
+                    break;
+                }
+                if (ret.data) {
+                    break;
+                }
+            } catch (e) {
+                console.log(e);
             }
             await delay(2000);
+            if (this.isCanceled()) {
+                return null;
+            }
+        }
+
+        if (ret.error) {
+            throw new Error(JSON.stringify(ret));
+        }
+
+        if (ret.data) {
+            return ret.data;
         }
         return null;
     }
@@ -412,7 +431,7 @@ class MixinEos {
             text: text,
             closeOnClickOutside: false,
             buttons: [false],
-            icon:'https://mixin-www.zeromesh.net/assets/fb6f3c230cb846e25247dfaa1da94d8f.gif'
+            icon:'https://mixineos.uuos.io/1488.png'
         });    
     }
 
@@ -459,7 +478,7 @@ class MixinEos {
                 text: "取消",
                 closeModal: false,
             },
-            icon:'https://mixin-www.zeromesh.net/assets/fb6f3c230cb846e25247dfaa1da94d8f.gif'
+            icon:'https://mixineos.uuos.io/1488.png'
         } as any)
     }
 
