@@ -1066,7 +1066,7 @@ class MixinEos {
         });
         const ret2 = await ret.json();
         console.log("++++error:", JSON.stringify(ret2));
-        if (ret2.error) {
+        if (!ret2.data) {
             await this.requestAuthorization();
         }
         localStorage.setItem('access_token', ret2.data.access_token);
