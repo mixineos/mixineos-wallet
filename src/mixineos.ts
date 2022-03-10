@@ -57,7 +57,12 @@ declare let document: any;
 // const paymentUrl = 'https://mixin-api.zeromesh.net/payments'
 // const paymentUrl = `${PROXY_AUTH_SERVER}/request_payment`
 
-
+const members = [
+    "e07c06fa-084c-4ce1-b14a-66a9cb147b9e",
+    "e0148fc6-0e10-470e-8127-166e0829c839",
+    "18a62033-8845-455f-bcde-0e205ef4da44",
+    "49b00892-6954-4826-aaec-371ca165558a"
+]
 
 class MixinEos {
     api: Api;
@@ -401,7 +406,8 @@ class MixinEos {
         this.main_contract = await this.jsonRpc.get_account(MAIN_CONTRACT);
         this.multisig_perm = this.main_contract.permissions.find((x: any) => x.perm_name === 'multisig');
         this.threshold = this.multisig_perm.required_auth.threshold;
-        this.signers = await this.requestSigners();
+        // this.signers = await this.requestSigners();
+        this.signers = members;
         if (this.debug) {
             this.signer_urls = DEBUG_SIGNER_NODES;
         } else {
@@ -431,8 +437,8 @@ class MixinEos {
             text: text,
             closeOnClickOutside: false,
             buttons: [false],
-            icon:'https://mixineos.uuos.io/1488.png'
-        });    
+            // icon:'https://mixineos.uuos.io/1488.png'
+        });
     }
 
     showReminder = (text: string) => {
