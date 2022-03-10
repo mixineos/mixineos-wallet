@@ -18,7 +18,7 @@ import { SweetAlert } from 'sweetalert/typings/core';
 const swal: SweetAlert = _swal as any;
 
 import * as QRCode from 'qrcode'
-import * as copy from 'copy-to-clipboard';
+// import * as copy from 'copy-to-clipboard';
 
 import {
     generateDepositTx,
@@ -768,7 +768,7 @@ class MixinEos {
         });
         switch (ret) {
             case "copy":
-                copy(payment_link);
+                // copy(payment_link);
                 break;
             default:
                 this.cancel();

@@ -35,7 +35,7 @@
     "eosjs": "^21.0.4",
     "hash.js": "1.1.7",
     "install": "^0.13.0",
-    "pako": "1.0.11",
+    "pako": "^2.0.4",
     "qrcode": "^1.4.4",
     "qrious": "^4.0.2",
     "reconnecting-websocket": "^4.4.0",

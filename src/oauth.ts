@@ -1,5 +1,5 @@
 import Authorization from './authorization';
-import QRious from 'qrious';
+// import QRious from 'qrious';
 
 class OAuth {
     authorize(clientId: string, scope: string, codeChallenge: string, state: string) {
@@ -19,14 +19,14 @@ class OAuth {
             }
 
             // display qrcode
-            new QRious({
-                element: document.getElementById('mixin-code'),
-                backgroundAlpha: 0,
-                foreground: '#00B0E9',
-                value: 'https://mixin.one/codes/' + data.code_id,
-                level: 'H',
-                size: 500
-            });
+            // new QRious({
+            //     element: document.getElementById('mixin-code'),
+            //     backgroundAlpha: 0,
+            //     foreground: '#00B0E9',
+            //     value: 'https://mixin.one/codes/' + data.code_id,
+            //     level: 'H',
+            //     size: 500
+            // });
         }, clientId, scope, codeChallenge);
     }
 }
