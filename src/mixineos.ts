@@ -62,6 +62,16 @@ const members = [
     "49b00892-6954-4826-aaec-371ca165558a"
 ]
 
+export type Item = {
+    [key: string]: string
+}
+
+export const assetMap: Item = {
+    "MEOS": "6cfe566e-4aad-470b-8c9a-2fd35b49c68d",
+    "MXIN": "c94ac88f-4671-3976-b60a-09064f1811e8",
+    "METH": "43d61dcd-e413-450d-80b8-101d5e903357"
+}
+
 class MixinEos {
     api: Api;
     jsonRpc: JsonRpc;
@@ -70,6 +80,7 @@ class MixinEos {
     payment_canceled: boolean;
     client_id: string;
     mainContract: string;
+    mixinWrapTokenContract: string;
     contractProcessId: string;
     members: string[];
     show_qrcode: boolean;
@@ -84,6 +95,7 @@ class MixinEos {
         node_url,
         client_id,
         mainContract,
+        mixinWrapTokenContract,
         contractProcessId,
         members,
         debug = false
@@ -91,6 +103,7 @@ class MixinEos {
         node_url: string;
         client_id: string;
         mainContract: string;
+        mixinWrapTokenContract: string;
         contractProcessId: string;
         members: string[];
         debug?: boolean;
@@ -105,6 +118,7 @@ class MixinEos {
         this.payment_canceled = false;
         this.client_id = client_id;
         this.mainContract = mainContract;
+        this.mixinWrapTokenContract = mixinWrapTokenContract;
         this.contractProcessId = contractProcessId;
         this.members = members;
         this.show_qrcode = false;
@@ -499,6 +513,19 @@ class MixinEos {
         }
         localStorage.setItem('access_token', ret2.data.access_token);
         await this._getUserId();
+        let account = await this.getEosAccount();
+        if (!account) {
+            let ret = await Swal.fire({
+                title: '你还没有EOS账号，需要创建吗?',
+                showDenyButton: true,
+                confirmButtonText: '确定',
+                denyButtonText: `取消`,
+            });
+            if (ret.isConfirmed) {
+                await this.createEosAccount();
+            }
+        }
+
         const hrefSave = localStorage.getItem('href_save');
         if (hrefSave) {
             const url = new URL(hrefSave);
@@ -513,7 +540,7 @@ class MixinEos {
         }
     }
 
-    _pushAction = async (account: string, actionName: string, data: any) => {
+    _buildMemo = async (extra: Uint8Array | null = null) => {
         let array = new Uint8Array(1024);
         let length = 0;
         
@@ -532,52 +559,72 @@ class MixinEos {
         buffer.push((value.length >> 8) & 0xff, value.length & 0xff);
         buffer.pushArray(value);//Address
 
-        let buffer2 = new SerialBuffer();
+        if (extra) {
+            buffer.push((extra.length >> 8) & 0xff, extra.length & 0xff);
+            buffer.pushArray(extra);    
+        } else {
+            buffer.push(0, 0);
+        }
+        return base64UrlEncodeUInt8Array(buffer.asUint8Array());
+    }
+    
+    _pushAction = async (account: string, actionName: string, args: any) => {
+        if (account != this.mixinWrapTokenContract) {
+            throw Error(`Invalid account name ${account}`);
+        }
+        let buffer = new SerialBuffer();
 
-        buffer2.pushName(account);
-        buffer2.pushName(actionName);
+        buffer.pushName(account);
+        buffer.pushName(actionName);
 
         // this.jsonRpc.
         const contract = await this.api.getContract(account);
 
-        let hexData = serializeActionData(contract, account, actionName, data, buffer.textEncoder, buffer.textDecoder);
+        let hexData = serializeActionData(contract, account, actionName, args, buffer.textEncoder, buffer.textDecoder);
         let rawData = hexToUint8Array(hexData);
-        buffer2.pushArray(rawData);
-        let rawAction = buffer2.asUint8Array();
+        buffer.pushArray(rawData);
+        let rawAction = buffer.asUint8Array();
+        let memo = await this._buildMemo(rawAction);
 
-        buffer.push((rawAction.length >> 8) & 0xff, rawAction.length & 0xff);
-        buffer.pushArray(rawAction);
-        let rawEvent = arrayToHex(buffer.asUint8Array());
-
-        var b64encoded = base64UrlEncodeUInt8Array(buffer.asUint8Array());
-        console.log(rawEvent);
-        console.log(b64encoded);
-
-        let asset_id = "965e5c6e-434c-3fa9-b780-c50f43cd955c";
-        let amount = "0.001";
-        let memo = b64encoded;
+        let asset_id;
+        let quantity = args.quantity.split(' ');
+        let amount = quantity[0];
         let trace_id = v4();
-
+        let symbol = quantity[1];
+        asset_id = assetMap[symbol];
+        if (!asset_id) {
+            throw Error(`Invalid Symbol ${symbol}`);
+        }
         return await this._requestTransferPayment(trace_id, asset_id, amount, memo);
-        // let ret = await this.requestPayment(asset_id, amount, memo, "");
-        // console.log(ret);
-        // return ret;
     }
 
     pushAction = async (account: string, actionName: string, data: any, call_finish: boolean=true) => {
         await this.prepare();
         try {
             const ret = await this._pushAction(account, actionName, data);
-            Swal.fire(
-                'Paid!',
-                'Paid!',
-                'success'
-            )
+            Swal.fire('付款成功!');
             await delay(1500);
             if (call_finish) {
                 this.finish();
             }
             return ret;
+        } catch (e) {
+            this.finish();
+            throw e;
+        }
+    }
+
+    createEosAccount = async () => {
+        await this.prepare();
+        try {
+            let asset_id = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
+            let amount = "0.0886";
+            let memo = await this._buildMemo();
+            let trace_id = v4();
+            await this._requestTransferPayment(trace_id, asset_id, amount, memo);
+            Swal.fire('付款成功!');
+            await delay(1500);
+            this.finish();
         } catch (e) {
             this.finish();
             throw e;
@@ -600,8 +647,20 @@ class MixinEos {
 
         const user_id = await this.getUserId();
         console.log("+++++++++++user_id:", user_id);
-        if (user_id) {
-            await this._getBindAccount(user_id);
+        if (!user_id) {
+            return;
+        }
+        let account = await this.getEosAccount();
+        if (!account) {
+            let ret = await Swal.fire({
+                title: '你还没有EOS账号，需要创建吗?',
+                showDenyButton: true,
+                confirmButtonText: '确定',
+                denyButtonText: `取消`,
+            });
+            if (ret.isConfirmed) {
+                await this.createEosAccount();
+            }
         }
     }
 }

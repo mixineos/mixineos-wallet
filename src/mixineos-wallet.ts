@@ -513,6 +513,7 @@ const InitWallet = ({
         node_url,
         client_id,
         mainContract,
+        mixinWrapTokenContract,
         contractProcessId,
         members,
         debug = false,
@@ -521,6 +522,7 @@ const InitWallet = ({
         node_url: string,
         client_id: string,
         mainContract: string,
+        mixinWrapTokenContract: string,
         contractProcessId: string,
         members: string[],
         debug?: boolean,
@@ -535,6 +537,7 @@ const InitWallet = ({
         node_url: node_url,
         client_id,
         mainContract,
+        mixinWrapTokenContract,
         contractProcessId,
         members,
         debug: debug
