@@ -130,11 +130,7 @@ class MixinEos {
                 "threshold": Math.trunc(this.members.length * 2 / 3 + 1)
             }
         }
-        console.log("++++++++payment:", payment);
-
         const ret2 = await this._requestPayment(payment);
-        console.log("+++++++++payment return:", ret2);
-        // TODO check error details
         if (ret2.error) {
             throw new Error(ret2.error);
         }
@@ -142,8 +138,6 @@ class MixinEos {
     }
 
     _requestTransferPayment = async (trace_id: string, asset_id: string, amount: string, memo: string) => {
-        // const signer_urls = signers.map((x:any) => x.url);
-        // await this.prepare();
         let payment: any = null;
         for (var i=0;i<3;i++) {
             try {
@@ -154,7 +148,6 @@ class MixinEos {
             }
 
             if (this.isCanceled()) {
-                console.log('payment canceled');
                 throw new Error('canceled');
             }
             await delay(1000);
@@ -163,18 +156,16 @@ class MixinEos {
             throw new Error("payment request failed!");
         }
 
-        var pay_link = `mixin://codes/${payment.code_id}`;
-        console.log('+++payment link:', pay_link);
+        var payLink = `mixin://codes/${payment.code_id}`;
         if (mobileAndTabletCheck() && !this.show_qrcode) {
             this.showPaymentCheckingReminder().then((value) => {
-                console.log("++++++++++showPaymentCheckingReminder:", value);
                 if (value) {
                     this.cancel();
                 }
             });
-            window.open(pay_link, "_blank");
+            window.open(payLink, "_blank");
         } else {
-            this._showPaymentQrcode(pay_link);
+            this._showPaymentQrcode(payLink);
         }
 
         var paid = false;
@@ -189,7 +180,6 @@ class MixinEos {
             }
             if (payment.status === 'paid') {
                 paid = true;
-                console.log("++++++paid", payment);
                 break;
             }
         };
@@ -251,7 +241,6 @@ class MixinEos {
             imageUrl: qrcodeUrl,
             confirmButtonText: '取消',
         });
-        console.log("+++++++++++_showPaymentQrcode:", ret);
         if (ret.isConfirmed || ret.isDismissed) {
             await this.cancel();
         }
@@ -259,11 +248,10 @@ class MixinEos {
 
     getBalance = async (account: string, symbol: string) => {
         try {
-            const r = await this.jsonRpc.get_currency_balance('mixinwtokens', account, symbol);
+            const r = await this.jsonRpc.get_currency_balance(this.mixinWrapTokenContract, account, symbol);
             if (r.length === 0) {
                 return 0.0;
             }
-            // console.log(r);
             return parseFloat(r[0].split(' ')[0]);
         } catch(e) {
             console.log(e);
@@ -285,25 +273,20 @@ class MixinEos {
                 }
             });
             const r2 = await r.json();
-            // console.log('+++my profile:', r2);
             if (r2.error && r2.error.code == 401) {
-                //{error: {status: 202, code: 401, description: "Unauthorized, maybe invalid token."}} (eosjs-multisig_wallet.js, line 47304)
                 await this.requestAuthorization();
                 return "";
             }
-            // console.log("++++++got user_id:", r2.data.user_id);
             localStorage.setItem('user_id', r2.data.user_id);
             return r2.data.user_id;
         } catch (e) {
             console.error(e);
-            // await this.requestAuthorization();
         }
 
         return "";
     }
 
     getUserId = async () => {
-        // console.log("++++++=getUserId");
         if (window.location.pathname === '/auth') {
             while(true) {
                 console.log("++++++++getUserId: onAuth...");
@@ -312,9 +295,6 @@ class MixinEos {
             return "";
         }
         let ret = await this._getUserId();
-        // if (!window.wallet.identity) {
-        //     window.wallet.getIdentity();
-        // }
         return ret;
     }
 
@@ -335,11 +315,9 @@ class MixinEos {
             show_payer :  false
         }
         var r = await this.jsonRpc.get_table_rows(params);
-        console.log("+++get table: bindaccounts:", r); 
     
         if (r.rows.length !== 0) {
             const account = r.rows[0].eos_account;
-            console.log("+++++++++account:", account);
             localStorage.setItem('binded_account', account);
             return account;
         }
@@ -391,7 +369,6 @@ class MixinEos {
             console.log("+++++++=bad request");
             return;
         }
-        console.log("++++++++++authorizationCode:", authorizationCode, this.client_id);
         var args = {
             "client_id": this.client_id,
             "code": authorizationCode,

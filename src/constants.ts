@@ -32,17 +32,10 @@ const supported_asset_ids = {
 const CLIENT_ID = '3e72ca0c-1bab-49ad-aa0a-4d8471d375e7';
 
 const NODE_URL = 'https://api.eosn.io';
-// const NODE_URL = 'https://api.eosflare.io';
-// const NODE_URL = 'https://eos.blockeden.cn';
 
-// const PROXY_AUTH_SERVER = 'https://dex.uuos.io:2053'
-// const PROXY_AUTH_SERVER = 'https://dex.uuos.io:2087' //MixinEOS.TEST
 const PROXY_AUTH_SERVER = 'http://192.168.1.3:8081'
 
 const VALID_ACCOUNT_CHARS = 'abcdefghijklmnopqrstuvwxyz12345';
-
-const MAIN_CONTRACT = 'mixincrossss';
-const TOKEN_CONTRACT = 'mixinwtokens';
 
 const CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906';
 
@@ -64,8 +57,6 @@ export {
     NODE_URL,
     PROXY_AUTH_SERVER,
     VALID_ACCOUNT_CHARS,
-    MAIN_CONTRACT,
-    TOKEN_CONTRACT,
     CHAIN_ID,
     OAUTH_URL,
     SIGN_ASSET_TOKEN_ID,
