@@ -18,11 +18,28 @@ const base64URLEncode = (str: string) => {
       .replace(/=/g, '');
 }
 
+const base64UrlEncodeUInt8Array = (arr: Uint8Array) => {
+    var output = [];
+
+    for (var i = 0, length = arr.length; i < length; i++) {
+      output.push(String.fromCharCode(arr[i]));
+    }
+
+    let b64encoded = btoa(output.join(''));
+    return b64encoded.replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
 const generateChallenge = () => {
+    console.log("+++++++++++generateChallenge:",);
     var wordArray = CryptoJS.lib.WordArray.random(32);
     var verifier = base64URLEncode(wordArray);
     var challenge = base64URLEncode(CryptoJS.SHA256(wordArray));
     window.localStorage.setItem('verifier', verifier);
+
+    console.log("+++++++++++generateChallenge:", challenge, verifier);
+    alert(challenge + ":" + verifier);
     return challenge;
 }
 
@@ -65,6 +82,7 @@ const hex2UserId = (user_id: string) => {
 export {
     replaceAll,
     base64URLEncode,
+    base64UrlEncodeUInt8Array,
     generateChallenge,
     mobileAndTabletCheck,
     delay,

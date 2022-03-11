@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 class Authorization {
     handled: boolean = false;
-    endpoint: string = 'blaze.mixin.one';
+    endpoint: string = 'wss://blaze.mixin.one';
     ws: any;
 
     send(msg: any) {

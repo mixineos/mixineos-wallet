@@ -1,5 +1,5 @@
 {
-  "name": "mixineos-multisig-wallet",
+  "name": "mixineos-wallet",
   "version": "21.0.3",
   "description": "MixinEos Multisig Wallet",
   "main": "dist/index.js",
@@ -23,7 +23,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/UUOSIO/mixineos-multisig-wallet.git"
+    "url": "https://github.com/mixineos/mixineos-wallet"
   },
   "dependencies": {
     "big-number": "^2.0.0",
@@ -40,7 +40,7 @@
     "qrious": "^4.0.2",
     "reconnecting-websocket": "^4.4.0",
     "style-loader": "^2.0.0",
-    "sweetalert": "^2.1.2",
+    "sweetalert": ">=0.3.0",
     "sweetalert2": "^10.16.7",
     "typings-for-css-modules-loader": "^1.7.0",
     "uuid": "^8.3.2",

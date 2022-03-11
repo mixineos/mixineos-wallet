@@ -13,7 +13,7 @@ class OAuth {
             if (!data) {
                 return false;
             }
-
+            console.log(data);
             if (data.authorization_code.length > 16) {
                 // handle data.authorization_code here
             }

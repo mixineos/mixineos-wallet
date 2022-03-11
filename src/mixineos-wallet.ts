@@ -10,6 +10,11 @@ const swal: SweetAlert = _swal as any;
 
 import { MixinEos } from "./mixineos"
 import { NODE_URL } from "./constants"
+import Auth  from "./oauth"
+
+import {
+    generateChallenge,
+} from './utils'
 
 let CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906'
 let jsonRpc = new JsonRpc(NODE_URL);
@@ -72,12 +77,15 @@ const _getBindAccount = async () => {
 
     const _user_id = replaceAll(user_id, "-", "");
     let user_id_dec = binaryToDecimal(fromHexString(_user_id));
+    user_id = '0xe07c06fa084c4ce1b14a66a9cb147b9e'
+
+    let mainContract = localStorage.getItem('mainContract');
 
     //    user_id = '0x' + _user_id.join('');
     var params = {
         json: true,
-        code: 'mixincrossss',
-        scope: 'mixincrossss',
+        code: mainContract,
+        scope: mainContract,
         table: 'bindaccounts',
         lower_bound: user_id_dec,
         upper_bound: user_id_dec,
@@ -91,7 +99,8 @@ const _getBindAccount = async () => {
     // console.log("+++get table: bindaccounts:", r); 
 
     if (r.rows.length !== 0) {
-        account = r.rows[0].account;
+        account = r.rows[0].eos_account;
+        console.log("+++++++++account:", account);
         localStorage.setItem('binded_account', account);
         return account;
     }
@@ -239,10 +248,8 @@ class ScatterEOS extends Plugin {
             if (!network.isValid()) throw Error('noNetwork');
             const httpEndpoint = `${network.protocol}` + '://' + `${network.hostport()}`;
             const chainId = network.hasOwnProperty('chainId') && network.chainId.length ? network.chainId : _options.chainId;
-            return proxy(_eos({
-                httpEndpoint,
-                chainId
-            }), {
+            console.log("+++++++++_eos:", _eos);
+            return proxy(_eos({httpEndpoint,chainId}), {
                 get(eosInstance: any, method: any) {
                     // console.log('+++++method', method, eosInstance);
                     let returnedFields: any = null;
@@ -505,13 +512,17 @@ export class Index {
 const InitWallet = ({
         node_url,
         client_id,
-        auth_proxy = false,
+        mainContract,
+        contractProcessId,
+        members,
         debug = false,
         inject = false
     } : {
         node_url: string,
         client_id: string,
-        auth_proxy?: boolean,
+        mainContract: string,
+        contractProcessId: string,
+        members: string[],
         debug?: boolean,
         inject?: boolean
     }) => {
@@ -523,11 +534,14 @@ const InitWallet = ({
     mixineos = new MixinEos({
         node_url: node_url,
         client_id,
-        auth_proxy,
+        mainContract,
+        contractProcessId,
+        members,
         debug: debug
     });
 
     window.mixineos = mixineos;
+    localStorage.setItem('mainContract', mainContract);
 
     (async () => {
         await mixineos.onLoad();
@@ -537,6 +551,14 @@ const InitWallet = ({
         if (!inject) {
             return;
         }
+
+        let asset_id = "965e5c6e-434c-3fa9-b780-c50f43cd955c";
+        let amount = "0.001";
+        let memo = "hello";
+        let trace_id = "";
+        let r = await mixineos.requestPayment(asset_id, amount, memo, trace_id);
+        console.log("++++++++++payment info:", r);
+
         window.wallet = new Index();
         window.scatter = window.wallet;
     
@@ -554,6 +576,8 @@ const InitWallet = ({
         document.dispatchEvent(new CustomEvent('walletLoaded'));
         document.dispatchEvent(new CustomEvent('scatterLoaded'));
     })();
+
+    return mixineos;
 }
 
 const showAlert = (options: any)  => {
