@@ -1,28 +1,12 @@
 import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
 import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
 import { Api } from 'eosjs/dist/eosjs-api';
-import { binaryToDecimal } from 'eosjs/dist/eosjs-numeric'
-
-
-import * as _swal from 'sweetalert';
-import { SweetAlert } from 'sweetalert/typings/core';
-const swal: SweetAlert = _swal as any;
-
 import { MixinEos } from "./mixineos"
 import { NODE_URL } from "./constants"
-import Auth  from "./oauth"
-
-import {
-    generateChallenge,
-} from './utils'
 
 let CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906'
 let jsonRpc = new JsonRpc(NODE_URL);
-let mixineos: any = null;
-
-// let jsonRpc = new JsonRpc('http://192.168.1.3:9000');
-// let CHAIN_ID = '8a34ec7df1b8cd06ff4a8abbaa7cc50300823350cadc59ab296cb00d104d2b8f'
-
+let mixineos: MixinEos = null;
 
 const signatureProvider = new JsSignatureProvider([
 ]);
@@ -39,104 +23,8 @@ console.log('+++++++++wallet init!');
 declare let window: any;
 declare let document: any;
 
-
-const getCookieValue = (name: string) => {
-    const values = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)")
-    if (values) {
-        return values.pop();
-    }
-    return "";
-//    ?.pop() || ''
-}
-
-const replaceAll = (s: string, search: string, replace: string) => {
-    return s.split(search).join(replace);
-}
-
-const fromHexString = (hexString: string) =>
-  new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-
-//   const toHexString = (bytes: Uint8Array) =>
-//     bytes.reduce((str: string, byte: number) => str + byte.toString(16).padStart(2, '0'), '');
-
 const toHexString = (bytes: any) =>
     bytes.reduce((str: string, byte: number) => str + byte.toString(16).padStart(2, '0'), '');
-
-const _getBindAccount = async () => {
-    // console.log("+++++_getBindAccount:");
-    let user_id = localStorage.getItem('user_id') as any;
-    if (!user_id) {
-        user_id = await mixineos.getUserId();
-        localStorage.setItem('binded_account', "");
-    }
-
-    let account = localStorage.getItem('binded_account') as any;
-    if (account) {
-        return account;
-    }
-
-    const _user_id = replaceAll(user_id, "-", "");
-    let user_id_dec = binaryToDecimal(fromHexString(_user_id));
-    user_id = '0xe07c06fa084c4ce1b14a66a9cb147b9e'
-
-    let mainContract = localStorage.getItem('mainContract');
-
-    //    user_id = '0x' + _user_id.join('');
-    var params = {
-        json: true,
-        code: mainContract,
-        scope: mainContract,
-        table: 'bindaccounts',
-        lower_bound: user_id_dec,
-        upper_bound: user_id_dec,
-        limit: 1,
-        key_type: 'i128',
-        index_position: '2',
-        reverse :  false,
-        show_payer :  false
-    }
-    var r = await jsonRpc.get_table_rows(params);
-    // console.log("+++get table: bindaccounts:", r); 
-
-    if (r.rows.length !== 0) {
-        account = r.rows[0].eos_account;
-        console.log("+++++++++account:", account);
-        localStorage.setItem('binded_account', account);
-        return account;
-    }
-
-    let ret = await swal({
-        text: '未关联EOS账号，需要创建吗？',
-        closeOnClickOutside: false,
-        buttons: {
-            cancel: "谢谢，不用!" as any,
-            catch: {
-                text: "好的，帮我创建",
-                value: "create",
-            },
-            defeat: {
-                text: "我已经有EOS账号",
-                value: "bind",
-            }
-        }
-    });
-    console.log(ret);
-    switch (ret) {
-        case "create":
-//                return await create_account(user_id);
-            window.location.replace("http://192.168.1.8011");
-            throw Error("creating...");
-            break;
-        case "bind":
-            window.location.replace("http://192.168.1.8011");
-            throw Error("binding...");
-        default:
-            throw Error('user canceled');
-    }
-    throw Error('account not found!');
-
-
-}
 
 const BLOCKCHAIN_SUPPORT = 'blockchain_support';
 
@@ -263,15 +151,8 @@ class ScatterEOS extends Plugin {
                             };
                             var chainId = toHexString(signargs.buf.subarray(0, 32));
                             var serializedTransaction = signargs.buf.subarray(32, signargs.buf.length-32);
-                            var signProviderArgs = {
-                                chainId: chainId,
-                                requiredKeys: [PUBLIC_KEY],
-                                serializedTransaction,
-                                abis: signargs.abis
-//                                serializedContextFreeData: null
-                            };
-                            return await mixineos.signTransaction(signProviderArgs);
-                            // return await signatureProvider.sign(signProviderArgs)
+                            //fake signature
+                            return "SIG_K1_KXdabr1z4G6e2o2xmi7jPhzxH3Lj5igjR5v3q9LY7KbLWyXBZyES748bPzfM2MhQQVsLrouJzXT9YFfw1CywzMVCcNVMGH"
                         };
 
                         return new Promise((resolve, reject) => {
@@ -353,12 +234,8 @@ export class Index {
             });
         } else if (request.type === 'requestSignature') {
             return new Promise((resolve, reject) => {
-                // console.log('++++request.payload:', request.payload);
-                mixineos.signTransaction(request.payload.transaction).then((s: any) => {
-                    resolve({signatures:s});
-                }).catch((e: any) => {
-                    reject(e);
-                })
+                //fake signature
+                resolve({signatures:"SIG_K1_KXdabr1z4G6e2o2xmi7jPhzxH3Lj5igjR5v3q9LY7KbLWyXBZyES748bPzfM2MhQQVsLrouJzXT9YFfw1CywzMVCcNVMGH"});
             });
         } else if (request.type === 'authenticate') {
             return new Promise((resolve, reject) => {
@@ -378,7 +255,7 @@ export class Index {
     getIdentity(requiredFields: any) {
         console.log("++++++++++getIdentity");
         return new Promise((resolve, reject) => {
-            _getBindAccount().then((account: any) => {
+            mixineos.getEosAccount().then((account: any) => {
                 console.log("++++getIdentity:", account);
                 const ids = {
                     hash: '1df7bb65ad53a9eb89b4327a56b1200f3abaf085ffec00af222b9eb7622b0734',
@@ -555,13 +432,6 @@ const InitWallet = ({
             return;
         }
 
-        let asset_id = "965e5c6e-434c-3fa9-b780-c50f43cd955c";
-        let amount = "0.001";
-        let memo = "hello";
-        let trace_id = "";
-        let r = await mixineos.requestPayment(asset_id, amount, memo, trace_id);
-        console.log("++++++++++payment info:", r);
-
         window.wallet = new Index();
         window.scatter = window.wallet;
     
@@ -583,14 +453,4 @@ const InitWallet = ({
     return mixineos;
 }
 
-const showAlert = (options: any)  => {
-    return swal(options);
-}
-
-const closeAlert = ()  => {
-    swal.close && swal.close();
-}
-
-// InitWallet(NODE_URL, CLIENT_ID);
-
-export { InitWallet, showAlert, closeAlert };
+export { InitWallet };

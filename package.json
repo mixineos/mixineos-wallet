@@ -40,8 +40,7 @@
     "qrious": "^4.0.2",
     "reconnecting-websocket": "^4.4.0",
     "style-loader": "^2.0.0",
-    "sweetalert": ">=0.3.0",
-    "sweetalert2": "^10.16.7",
+    "sweetalert2": "^11.4.4",
     "typings-for-css-modules-loader": "^1.7.0",
     "uuid": "^8.3.2",
     "uuidv4": "^6.2.7"

@@ -167,6 +167,7 @@ class MixinEos {
         console.log('+++payment link:', pay_link);
         if (mobileAndTabletCheck() && !this.show_qrcode) {
             this.showPaymentCheckingReminder().then((value) => {
+                console.log("++++++++++showPaymentCheckingReminder:", value);
                 if (value) {
                     this.cancel();
                 }
@@ -250,7 +251,8 @@ class MixinEos {
             imageUrl: qrcodeUrl,
             confirmButtonText: '取消',
         });
-        if (ret.isConfirmed) {
+        console.log("+++++++++++_showPaymentQrcode:", ret);
+        if (ret.isConfirmed || ret.isDismissed) {
             await this.cancel();
         }
     }
