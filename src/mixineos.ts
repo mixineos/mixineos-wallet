@@ -408,9 +408,6 @@ class MixinEos {
     _getBindAccount = async (user_id: string) => {
         const _user_id = replaceAll(user_id, "-", "");
         let user_id_dec = binaryToDecimal(fromHexString(_user_id));
-        user_id_dec = '210657097631552184976015653556082605280'
-
-        //    user_id = '0x' + _user_id.join('');
         var params = {
             json: true,
             code: this.mainContract,
@@ -436,7 +433,7 @@ class MixinEos {
         return "";
     }
 
-    getBindAccount = async () => {
+    getEosAccount = async () => {
         let user_id = localStorage.getItem('user_id') as any;
         if (!user_id) {
             user_id = await this.getUserId();

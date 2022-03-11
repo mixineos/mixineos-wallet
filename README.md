@@ -1,12 +1,12 @@
-# README
+# mixineos-wallet
 
-How to use
+# How to use
 
 ```
 yarn add mixineos-wallet
 ```
 
-Add the following code to your project.
+## Initializing
 
 ```javascript
 import { InitWallet } from "mixineos-wallet"
@@ -18,7 +18,7 @@ const members = [
     "49b00892-6954-4826-aaec-371ca165558a"
 ];
 
-InitWallet({
+let mixineos = InitWallet({
   node_url: "https://api.eosn.io",
   client_id: "d78a6e9e-5d23-4b24-8bf3-05dc8576cf8b",
   mainContract: "mixincrossss",
@@ -30,4 +30,25 @@ InitWallet({
 
 ```
 
-All set!
+## APIs
+
+### MixinEos.getEOSAccount
+get mixin user associated EOS account
+
+```javascript
+let account = mixineos.getEOSAccount();
+allert(account);
+```
+
+### MixinEos.pushAction
+```javascript
+let account = await mixineos.getEOSAccount();
+let args = {
+    'from': account,
+    'to': 'helloworld',
+    'quantity': "0.00000001 MEOS",
+    'memo': 'hello,world'
+}
+
+await mixineos.pushAction("mixinwtokens", "transfer", args);
+```
