@@ -2,65 +2,29 @@ import "./styles.css"
 import { Api } from 'eosjs/dist/eosjs-api';
 import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
 import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
-import { Signature } from "eosjs/dist/eosjs-key-conversions"
 import { binaryToDecimal } from 'eosjs/dist/eosjs-numeric'
-import { SerialBuffer, serializeActionData, hexToUint8Array, arrayToHex } from 'eosjs/dist/eosjs-serialize'
-
-import { sha256 as eosjs_sha256 } from 'eosjs/dist/eosjs-key-conversions';
-
+import { SerialBuffer, serializeActionData, hexToUint8Array } from 'eosjs/dist/eosjs-serialize'
 import { v4 } from 'uuid';
-import * as _swal from 'sweetalert';
-import { SweetAlert } from 'sweetalert/typings/core';
-const swal: SweetAlert = _swal as any;
 import Swal from 'sweetalert2'
-
 import * as QRCode from 'qrcode'
-// import * as copy from 'copy-to-clipboard';
-
-import {
-    generateDepositTx,
-    generateWithdrawTx,
-    generateCreateAccountTx,
-    generateBindAccountTx,
-    generateChangePermTx,
-    generateRemoveMultisigTx
-} from './tx_generator'
 
 import {
     replaceAll,
-    base64URLEncode,
     base64UrlEncodeUInt8Array,
     generateChallenge,
     mobileAndTabletCheck,
     delay,
     fromHexString,
-    toHexString,
-    int2Hex
 } from './utils'
 
-import { supported_asset_ids,
-    MAIN_CONTRACT,
-    TOKEN_CONTRACT,
-    PROXY_AUTH_SERVER,
+import {
     CHAIN_ID,
-    SIGN_ASSET_TOKEN_ID,
     OAUTH_URL,
     DEBUG_SIGNER_NODES
 } from "./constants";
 
 
 declare let window: any;
-declare let document: any;
-
-// const paymentUrl = 'https://mixin-api.zeromesh.net/payments'
-// const paymentUrl = `${PROXY_AUTH_SERVER}/request_payment`
-
-const members = [
-    "e07c06fa-084c-4ce1-b14a-66a9cb147b9e",
-    "e0148fc6-0e10-470e-8127-166e0829c839",
-    "18a62033-8845-455f-bcde-0e205ef4da44",
-    "49b00892-6954-4826-aaec-371ca165558a"
-]
 
 export type Item = {
     [key: string]: string
@@ -205,7 +169,6 @@ class MixinEos {
             this.showPaymentCheckingReminder().then((value) => {
                 if (value) {
                     this.cancel();
-                    // swal.close();
                 }
             });
             window.open(pay_link, "_blank");
@@ -217,8 +180,7 @@ class MixinEos {
         for (var i=0;i<90;i++) {
             await delay(1000);
             if (this.isCanceled()) {
-                console.log('payment canceled...');
-                throw new Error('canceled');
+                return false;
             }
             payment = await this.requestPayment(asset_id, amount, memo, trace_id);
             if (payment.error) {
@@ -232,8 +194,9 @@ class MixinEos {
         };
     
         if (!paid) {
-            throw new Error('payment timeout');
+            return false;
         }
+        return true;
     }
     
     prepare = async () => {
@@ -267,95 +230,29 @@ class MixinEos {
         Swal.close();
     }
     
-    showProgress = (text: string) => {
-        return swal({
-            text: text,
-            closeOnClickOutside: false,
-            buttons: [false],
-            // icon:'https://mixineos.uuos.io/1488.png'
-        });
-    }
-
-    showReminder = (text: string) => {
-        return swal({
-            text: text,
-            closeOnClickOutside: false,
-            buttons: {
-                defeat: {
-                    text: "确定",
-                    value: "bind",
-                }
-            },
-        });
-    }
-    
-    showConfirm = (text: string, icon: string = 'warning') => {
-        return swal({
-            text: text,
-            closeOnClickOutside: false,
-            buttons: {
-                defeat: {
-                    text: "确定",
-                    value: "bind",
-                }
-            },
-            icon: icon
-        });
-    }
-
-    setReminder = (text: string) => {
-        let elements = document.getElementsByClassName('swal-text');
-        if (elements.length === 0) {
-            return;
-        }
-        elements[0].innerHTML = text;    
-    }
-
     showPaymentCheckingReminder = () => {
-        Swal.fire({
-            title: 'Sweet!',
+        return Swal.fire({
+            title: '',
             text: '正在等待确认...',
             imageUrl: 'https://mixineos.uuos.io/1488.png',
             imageWidth: 60,
             imageHeight: 60,
-            imageAlt: 'Custom image',
+            imageAlt: 'image',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
         })
-        return;
-        return swal({
-            text: '正在等待确认...',
-            closeOnClickOutside: false,
-            button: {
-                text: "取消",
-                closeModal: false,
-            },
-            icon:'https://mixineos.uuos.io/1488.png'
-        } as any)
-    }
-
-    _sendTransaction = async (signatures: any, transaction: any) => {
-        this.setReminder('正在发送...');
-        const r2 = await this.jsonRpc.push_transaction({
-            signatures: signatures as string[],
-            compression: transaction.compression,
-            serializedTransaction: transaction.serializedTransaction,
-            serializedContextFreeData: transaction.serializedContextFreeData
-        });
-        // this.closeAlert();
-        await delay(1000);
-        this.setReminder('发送成功...');
-        await delay(1000);
-        return r2;
     }
 
     _showPaymentQrcode = async (payment_link: string) => {
         let qrcodeUrl = await QRCode.toDataURL(payment_link);
-        console.log("++++++QRCode.toDataURL", qrcodeUrl);
-        console.log("+++++++++swal:", swal);
         let ret = await Swal.fire({
             text: '正在等待确认...',
             imageUrl: qrcodeUrl,
+            confirmButtonText: '取消',
         });
-        // swal.close && swal.close();
+        if (ret.isConfirmed) {
+            await this.cancel();
+        }
     }
 
     getBalance = async (account: string, symbol: string) => {
@@ -520,6 +417,8 @@ class MixinEos {
                 showDenyButton: true,
                 confirmButtonText: '确定',
                 denyButtonText: `取消`,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
             });
             if (ret.isConfirmed) {
                 await this.createEosAccount();
@@ -602,7 +501,9 @@ class MixinEos {
         await this.prepare();
         try {
             const ret = await this._pushAction(account, actionName, data);
-            Swal.fire('付款成功!');
+            if (ret) {
+                Swal.fire('付款成功!');
+            }
             await delay(1500);
             if (call_finish) {
                 this.finish();
@@ -657,6 +558,8 @@ class MixinEos {
                 showDenyButton: true,
                 confirmButtonText: '确定',
                 denyButtonText: `取消`,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
             });
             if (ret.isConfirmed) {
                 await this.createEosAccount();
