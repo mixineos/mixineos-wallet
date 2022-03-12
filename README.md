@@ -41,7 +41,7 @@ let mixineos = InitWallet({
 get mixin user associated EOS account
 
 ```javascript
-let account = mixineos.getEOSAccount();
+let account = await mixineos.getEOSAccount();
 allert(account);
 ```
 
