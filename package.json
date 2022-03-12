@@ -43,7 +43,7 @@
     "@types/pako": "^1.0.1",
     "cypress": "^4.12.1",
     "eosjs-ecc": "^4.0.7",
-    "eslint": "^6.8.0",
+    "eslint": "^8.11.0",
     "jest": "^26.3.0",
     "jest-fetch-mock": "^3.0.3",
     "ts-jest": "^26.2.0",
