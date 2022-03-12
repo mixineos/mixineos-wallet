@@ -137,6 +137,8 @@ class ScatterEOS extends Plugin {
                     return (...args: any[]) => {
                         if (method == "transact") {
                             return window.mixineos.pushTransaction(args[0]);
+                        } else if (method == "transaction") {//eosjs v1
+                            return window.mixineos.pushTransaction(args[0]);
                         }
                         return new Promise((resolve, reject) => {
                             reject(false);
@@ -213,16 +215,21 @@ export class Index {
                     hash: '1df7bb65ad53a9eb89b4327a56b1200f3abaf085ffec00af222b9eb7622b0734',
                     publicKey: PUBLIC_KEY,
                     name: 'InjectedWallet-'+account,
-                    accounts: [{
-                        name: account,
-                        authority: 'active',
-                        blockchain: 'eos',
-                        publicKey: PUBLIC_KEY,
-                        "isHardware":false
-                    },
-                ],
+                    accounts: [
+                        {
+                            name: account,
+                            authority: 'active',
+                            blockchain: 'eos',
+                            publicKey: PUBLIC_KEY,
+                            "isHardware":false
+                        },
+                    ],
                     kyc: false
                 };
+
+                if (!window.scatter) {
+                    window.scatter = window.scatterBk;
+                }
                 window.scatter.identity = ids;
                 resolve(ids);
             }).catch((e: any) => {
@@ -311,6 +318,7 @@ export class Index {
 }
 
 window.scatter = new Index();
+window.scatterBk = window.scatter;
 window.scatter.loadPlugin(new ScatterEOS());
 
 const InitWallet = ({
