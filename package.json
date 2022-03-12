@@ -26,22 +26,13 @@
     "url": "https://github.com/mixineos/mixineos-wallet"
   },
   "dependencies": {
-    "big-number": "^2.0.0",
     "bignumber.js": "^9.0.1",
-    "copy-to-clipboard": "^3.3.1",
     "crypto-js": "^4.0.0",
-    "css-loader": "^5.2.6",
-    "elliptic": "6.5.3",
     "eosjs": "^21.0.4",
-    "hash.js": "1.1.7",
-    "install": "^0.13.0",
-    "pako": "^2.0.4",
     "qrcode": "^1.4.4",
     "qrious": "^4.0.2",
     "reconnecting-websocket": "^4.4.0",
-    "style-loader": "^2.0.0",
     "sweetalert2": "^11.4.4",
-    "typings-for-css-modules-loader": "^1.7.0",
     "uuid": "^8.3.2",
     "uuidv4": "^6.2.7"
   },
@@ -63,7 +54,7 @@
     "webpack-cli": "^3.3.12"
   },
   "resolutions": {
-    "lodash": "4.17.19"
+    "lodash": "4.17.21"
   },
   "jest": {
     "automock": false,
