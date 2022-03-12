@@ -1,5 +1,9 @@
 # mixineos-wallet
 
+# Demo of mixineos wallet
+
+See [demo](https://github.com/mixineos/mixineos-wallet-demo)
+
 # How to use
 
 ```
