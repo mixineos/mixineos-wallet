@@ -18,8 +18,6 @@ const api = new Api({
     rpc: jsonRpc, signatureProvider, chainId: CHAIN_ID, textDecoder: new TextDecoder(), textEncoder: new TextEncoder()
 });
 
-console.log('+++++++++wallet init!');
-
 declare let window: any;
 declare let document: any;
 
@@ -126,9 +124,6 @@ class ScatterEOS extends Plugin {
     signatureProvider(...args: any[]) {
         const throwIfNoIdentity = args[0];
         return (network: Network, _eos: any, _options: any = {}) => {
-            // console.log('++++network:', network);
-            // console.log('++++_eos:', _eos);
-            // console.log('++++_options:', _options);
             var url = `${network.protocol}://${network.host}:${network.port}`
             jsonRpc.endpoint = url;
 
@@ -136,13 +131,10 @@ class ScatterEOS extends Plugin {
             if (!network.isValid()) throw Error('noNetwork');
             const httpEndpoint = `${network.protocol}` + '://' + `${network.hostport()}`;
             const chainId = network.hasOwnProperty('chainId') && network.chainId.length ? network.chainId : _options.chainId;
-            console.log("+++++++++_eos:", _eos);
             return proxy(new _eos({httpEndpoint,chainId}), {
                 get(eosInstance: any, method: any) {
-                    console.log('+++++method', method, eosInstance);
                     let returnedFields: any = null;
                     return (...args: any[]) => {
-                        console.log(args);
                         if (method == "transact") {
                             return window.mixineos.pushTransaction(args[0]);
                         }
@@ -167,7 +159,6 @@ export class Index {
     }
 
     loadPlugin(plugin: Plugin) {
-        console.log("++++++loadPlugin:", plugin);
         const noIdFunc = () => {
             if (!this.identity) throw new Error('No IIIIdentity')
         };
@@ -180,7 +171,6 @@ export class Index {
     }
 
     async connect(pluginName: string, options: any) {
-        console.log("++++++++Index.connect:", pluginName, options);
         return Promise.resolve(!0);
     }
 
@@ -217,10 +207,8 @@ export class Index {
     }
 
     getIdentity(requiredFields: any) {
-        console.log("++++++++++getIdentity:", requiredFields);
         return new Promise((resolve, reject) => {
             mixineos.getEosAccount().then((account: any) => {
-                console.log("++++getIdentity:", account);
                 const ids = {
                     hash: '1df7bb65ad53a9eb89b4327a56b1200f3abaf085ffec00af222b9eb7622b0734',
                     publicKey: PUBLIC_KEY,
@@ -245,7 +233,6 @@ export class Index {
     }
 
     useIdentity(id: any) {
-        console.log("+++++++useIdentity:", id);
     }
 
     getIdentityFromPermissions() {
@@ -264,7 +251,6 @@ export class Index {
     }
 
     getArbitrarySignature(publicKey: string, data: any, whatfor = '', isHash = false) {
-        // console.log("+++++getArbitrarySignature");
         let params = {
             publicKey: publicKey,
             data: data,
@@ -324,19 +310,8 @@ export class Index {
     }
 }
 
-// console.log('+++++++++wallet init done!');
-
-// window.wallet = new Index();
-
-// document.addEventListener('walletLoaded', (event) => {
-//     console.log("++++++++++walletLoaded", event);
-// });
-// document.dispatchEvent(new CustomEvent('walletLoaded'));
-
 window.scatter = new Index();
 window.scatter.loadPlugin(new ScatterEOS());
-console.log("++++++++window.scatter.loadPlugin(new ScatterEOS())");
-console.log("++++++++window.scatter.getIdentity", window.scatter.getIdentity);
 
 const InitWallet = ({
         node_url,
@@ -357,7 +332,6 @@ const InitWallet = ({
         debug?: boolean,
         inject?: boolean
     }) => {
-    console.log("+++++++++++++InitWallet");
     if (!!window.mixineos) {
         return;
     }
@@ -375,33 +349,17 @@ const InitWallet = ({
     window.mixineos = mixineos;
     localStorage.setItem('mainContract', mainContract);
 
-    // window.wallet = new Index();
-    // window.wallet.loadPlugin(new ScatterEOS());
-
-    document.addEventListener('scatterLoaded', (event: any) => {
-        console.log("++++++++++scatterLoaded", event);
-    });
-
     document.dispatchEvent(new CustomEvent('scatterLoaded'));
-    // document.dispatchEvent(new CustomEvent('walletLoaded'));
 
     (async () => {
-        // document.dispatchEvent(new CustomEvent('scatterLoaded'));
         await mixineos.onLoad();
         const info = await jsonRpc.get_info();
         CHAIN_ID = info.chain_id;
-        // console.log("+++++++++CHAIN_ID:", CHAIN_ID);
         if (!inject) {
             return;
         }
-
-        document.addEventListener('walletLoaded', (event: any) => {
-            console.log("++++++++++walletLoaded", event);
-        });
         
-        // document.dispatchEvent(new CustomEvent('scatterLoaded'));
         console.log('+++++++++wallet v2 init done!!!');
-        // document.dispatchEvent(new CustomEvent('scatterLoaded'));
 
     })();
     return mixineos;
