@@ -1,6 +1,6 @@
 {
   "name": "mixineos-wallet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MixinEos Multisig Wallet",
   "main": "dist/index.js",
   "scripts": {
