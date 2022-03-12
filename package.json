@@ -30,7 +30,6 @@
     "crypto-js": "^4.0.0",
     "eosjs": "^21.0.4",
     "qrcode": "^1.4.4",
-    "qrious": "^4.0.2",
     "reconnecting-websocket": "^4.4.0",
     "sweetalert2": "^11.4.4",
     "uuid": "^8.3.2",
