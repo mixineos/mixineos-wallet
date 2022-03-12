@@ -11,7 +11,7 @@ let mixineos: MixinEos = null;
 const signatureProvider = new JsSignatureProvider([
 ]);
 
-const PUBLIC_KEY = 'EOS4vtCi4jbaVCLVJ9Moenu9j7caHeoNSWgWY65bJgEW8MupWsRMo'
+const PUBLIC_KEY = 'EOS7NqmJvt93T4y31b2Qba1sxoiTRR7Q3vQZwHjdPQh4gEq5BzaZ6'
 // const PUBLIC_KEY = 'EOS6GcXh1mgpGvmBWrF1wWQZxH7RWxF4TMnLQkbLMp2AYHfHJRdT2'
 
 const api = new Api({
@@ -137,53 +137,17 @@ class ScatterEOS extends Plugin {
             const httpEndpoint = `${network.protocol}` + '://' + `${network.hostport()}`;
             const chainId = network.hasOwnProperty('chainId') && network.chainId.length ? network.chainId : _options.chainId;
             console.log("+++++++++_eos:", _eos);
-            return proxy(_eos({httpEndpoint,chainId}), {
+            return proxy(new _eos({httpEndpoint,chainId}), {
                 get(eosInstance: any, method: any) {
-                    // console.log('+++++method', method, eosInstance);
+                    console.log('+++++method', method, eosInstance);
                     let returnedFields: any = null;
                     return (...args: any[]) => {
-                        if (args.find(arg => arg.hasOwnProperty('keyProvider'))) throw Error('keyProvider');
-                        const signProvider = async (signargs: any) => {
-                            // console.log("++++++++signargs:", signargs);
-                            throwIfNoIdentity();
-                            const requiredFields = args.find(arg => arg.hasOwnProperty('requiredFields')) || {
-                                requiredFields: {}
-                            };
-                            var chainId = toHexString(signargs.buf.subarray(0, 32));
-                            var serializedTransaction = signargs.buf.subarray(32, signargs.buf.length-32);
-                            //fake signature
-                            return "SIG_K1_KXdabr1z4G6e2o2xmi7jPhzxH3Lj5igjR5v3q9LY7KbLWyXBZyES748bPzfM2MhQQVsLrouJzXT9YFfw1CywzMVCcNVMGH"
-                        };
-
+                        console.log(args);
+                        if (method == "transact") {
+                            return window.mixineos.pushTransaction(args[0]);
+                        }
                         return new Promise((resolve, reject) => {
-                            _eos(Object.assign(_options, {
-                                httpEndpoint,
-                                signProvider,
-                                chainId
-                            }))[method](...args).then((result: any) => {
-                                if (!result.hasOwnProperty('fc')) {
-                                    result = Object.assign(result, {
-                                        returnedFields
-                                    });
-                                    resolve(result);
-                                    return
-                                }
-                                const contractProxy = proxy(result, {
-                                    get(instance: any, method: any) {
-                                        if (method === 'then') return instance[method];
-                                        return (...args: any[]) => {
-                                            return new Promise(async (res, rej) => {
-                                                instance[method](...args).then((actionResult: any) => {
-                                                    res(Object.assign(actionResult, {
-                                                        returnedFields
-                                                    }))
-                                                }).catch(rej)
-                                            })
-                                        }
-                                    }
-                                });
-                                resolve(contractProxy)
-                            }).catch((error: any) => reject(error))
+                            reject(false);
                         })
                     }
                 }
@@ -225,9 +189,9 @@ export class Index {
     sendApiRequest(request: any){
         console.log("++++sendApiRequest:", request);
         if (request.type === 'identityFromPermissions') {
-            return window.wallet.getIdentity();
+            return window.scatter.getIdentity();
         } else if (request.type === 'getOrRequestIdentity') {
-            return window.wallet.getIdentity();
+            return window.scatter.getIdentity();
         } else if (request.type === 'getPublicKey') {
             return new Promise((resolve, reject) => {
                 resolve(PUBLIC_KEY);
@@ -239,7 +203,7 @@ export class Index {
             });
         } else if (request.type === 'authenticate') {
             return new Promise((resolve, reject) => {
-                window.wallet.authenticate().then((r: any) => {
+                window.scatter.authenticate().then((r: any) => {
                     resolve(r);
                 }).catch((e: any) => {
                     reject(e);
@@ -249,11 +213,11 @@ export class Index {
     }
 
     login(requiredFields: any) {
-        return window.wallet.getIdentity(requiredFields);
+        return window.scatter.getIdentity(requiredFields);
     }
 
     getIdentity(requiredFields: any) {
-        console.log("++++++++++getIdentity");
+        console.log("++++++++++getIdentity:", requiredFields);
         return new Promise((resolve, reject) => {
             mixineos.getEosAccount().then((account: any) => {
                 console.log("++++getIdentity:", account);
@@ -268,31 +232,10 @@ export class Index {
                         publicKey: PUBLIC_KEY,
                         "isHardware":false
                     },
-                    {
-                        name: 'learnfortest',
-                        authority: 'active',
-                        blockchain: 'eos',
-                        publicKey: 'EOS4vtCi4jbaVCLVJ9Moenu9j7caHeoNSWgWY65bJgEW8MupWsRMo',
-                        "isHardware":false
-                    },
-                    {
-                        name: 'learnforlove',
-                        authority: 'active',
-                        blockchain: 'eos',
-                        publicKey: 'EOS6SD6yzqaZhdPHw2LUVmZxWLeWxnp76KLnnBbqP94TsDsjNLosG',
-                        "isHardware":false
-                    },
-                    {
-                        name: 'learntotest1',
-                        authority: 'active',
-                        blockchain: 'eos',
-                        publicKey: 'EOS82JTja1SbcUjSUCK8SNLLMcMPF8W5fwUYRXmX32obtjsZMW9nx',
-                        "isHardware":false
-                    }
                 ],
                     kyc: false
                 };
-                window.wallet.identity = ids;
+                window.scatter.identity = ids;
                 resolve(ids);
             }).catch((e: any) => {
                 console.log("+++_getBindAccount error:", e)
@@ -301,8 +244,12 @@ export class Index {
         })
     }
 
+    useIdentity(id: any) {
+        console.log("+++++++useIdentity:", id);
+    }
+
     getIdentityFromPermissions() {
-        return window.wallet.getIdentity();
+        return window.scatter.getIdentity();
     }
 
     forgetIdentity() {
@@ -313,7 +260,7 @@ export class Index {
     }
     
     authenticate(nonce: any) {
-        return window.wallet.getIdentity();
+        return window.scatter.getIdentity();
     }
 
     getArbitrarySignature(publicKey: string, data: any, whatfor = '', isHash = false) {
@@ -386,6 +333,11 @@ export class Index {
 // });
 // document.dispatchEvent(new CustomEvent('walletLoaded'));
 
+window.scatter = new Index();
+window.scatter.loadPlugin(new ScatterEOS());
+console.log("++++++++window.scatter.loadPlugin(new ScatterEOS())");
+console.log("++++++++window.scatter.getIdentity", window.scatter.getIdentity);
+
 const InitWallet = ({
         node_url,
         client_id,
@@ -405,7 +357,7 @@ const InitWallet = ({
         debug?: boolean,
         inject?: boolean
     }) => {
-
+    console.log("+++++++++++++InitWallet");
     if (!!window.mixineos) {
         return;
     }
@@ -423,7 +375,18 @@ const InitWallet = ({
     window.mixineos = mixineos;
     localStorage.setItem('mainContract', mainContract);
 
+    // window.wallet = new Index();
+    // window.wallet.loadPlugin(new ScatterEOS());
+
+    document.addEventListener('scatterLoaded', (event: any) => {
+        console.log("++++++++++scatterLoaded", event);
+    });
+
+    document.dispatchEvent(new CustomEvent('scatterLoaded'));
+    // document.dispatchEvent(new CustomEvent('walletLoaded'));
+
     (async () => {
+        // document.dispatchEvent(new CustomEvent('scatterLoaded'));
         await mixineos.onLoad();
         const info = await jsonRpc.get_info();
         CHAIN_ID = info.chain_id;
@@ -432,24 +395,15 @@ const InitWallet = ({
             return;
         }
 
-        window.wallet = new Index();
-        window.scatter = window.wallet;
-    
-        window.scatter.loadPlugin(new ScatterEOS());
-    
         document.addEventListener('walletLoaded', (event: any) => {
             console.log("++++++++++walletLoaded", event);
         });
         
-        document.addEventListener('scatterLoaded', (event: any) => {
-            console.log("++++++++++scatterLoaded", event);
-        });
         // document.dispatchEvent(new CustomEvent('scatterLoaded'));
         console.log('+++++++++wallet v2 init done!!!');
-        document.dispatchEvent(new CustomEvent('walletLoaded'));
-        document.dispatchEvent(new CustomEvent('scatterLoaded'));
-    })();
+        // document.dispatchEvent(new CustomEvent('scatterLoaded'));
 
+    })();
     return mixineos;
 }
 

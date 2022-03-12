@@ -1,4 +1,3 @@
-import "./styles.css"
 import { Api } from 'eosjs/dist/eosjs-api';
 import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
 import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
@@ -492,6 +491,31 @@ class MixinEos {
             this.finish();
             throw e;
         }
+    }
+
+    pushTransaction = async (tx: any) => {
+        if (tx.actions.length != 1) {
+            throw Error("transaction can only contain one action.");
+        }
+
+        let action = tx.actions[0];
+        if (action.account != this.mixinWrapTokenContract) {
+            throw Error(`action account must be ${this.mixinWrapTokenContract}`);
+        }
+
+        if (action.authorization.length != 1) {
+            throw Error("transaction can only contain one authorization.");
+        }
+
+        let auth = action.authorization[0];
+        if (auth.actor != await this.getEosAccount()) {
+            throw Error(`Invalid actor ${auth.actor}`);
+        }
+
+        if (auth.permission != "active") {
+            throw Error(`Invalid permission ${auth.permission}`);
+        }
+        return await this.pushAction(action.account, action.name, action.data);
     }
 
     createEosAccount = async () => {

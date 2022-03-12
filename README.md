@@ -6,7 +6,7 @@
 yarn add mixineos-wallet
 ```
 
-## Initializing
+## Initialization
 
 ```javascript
 import { InitWallet } from "mixineos-wallet"
