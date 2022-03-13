@@ -29,6 +29,7 @@ let mixineos = InitWallet({
   mixinWrapTokenContract: "mixinwtokens",
   contractProcessId: "e0148fc6-0e10-470e-8127-166e0829c839",
   members,
+  lang: "en",
   debug: false,
   inject: true
 });

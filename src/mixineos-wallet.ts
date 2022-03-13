@@ -328,6 +328,7 @@ const InitWallet = ({
         mixinWrapTokenContract,
         contractProcessId,
         members,
+        lang,
         debug = false,
         inject = false
     } : {
@@ -337,6 +338,7 @@ const InitWallet = ({
         mixinWrapTokenContract: string,
         contractProcessId: string,
         members: string[],
+        lang: string,
         debug?: boolean,
         inject?: boolean
     }) => {
@@ -351,6 +353,7 @@ const InitWallet = ({
         mixinWrapTokenContract,
         contractProcessId,
         members,
+        lang,
         debug: debug
     });
 

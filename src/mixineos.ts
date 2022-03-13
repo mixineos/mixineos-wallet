@@ -6,6 +6,7 @@ import { SerialBuffer, serializeActionData, hexToUint8Array } from 'eosjs/dist/e
 import { v4 } from 'uuid';
 import Swal from 'sweetalert2'
 import * as QRCode from 'qrcode'
+import { tr, changeLang } from "./lang"
 
 import {
     replaceAll,
@@ -61,6 +62,7 @@ class MixinEos {
         mixinWrapTokenContract,
         contractProcessId,
         members,
+        lang,
         debug = false
     } : {
         node_url: string;
@@ -69,6 +71,7 @@ class MixinEos {
         mixinWrapTokenContract: string;
         contractProcessId: string;
         members: string[];
+        lang: string,
         debug?: boolean;
     }) {
         const signatureProvider = new JsSignatureProvider([]);
@@ -89,6 +92,7 @@ class MixinEos {
 
         this.signer_urls = null;
         this.debug = debug;
+        changeLang(lang);
 
         this.isRequestingAuthorization = false;
     }
@@ -223,7 +227,7 @@ class MixinEos {
     showPaymentCheckingReminder = () => {
         return Swal.fire({
             title: '',
-            text: '正在等待确认...',
+            text: tr("Awaiting confirmation..."),
             imageUrl: 'https://mixineos.uuos.io/1488.png',
             imageWidth: 60,
             imageHeight: 60,
@@ -236,9 +240,9 @@ class MixinEos {
     _showPaymentQrcode = async (payment_link: string) => {
         let qrcodeUrl = await QRCode.toDataURL(payment_link);
         let ret = await Swal.fire({
-            text: '正在等待确认...',
+            text: tr("Awaiting confirmation..."),
             imageUrl: qrcodeUrl,
-            confirmButtonText: '取消',
+            confirmButtonText: tr("Cancel"),
         });
         if (ret.isConfirmed || ret.isDismissed) {
             await this.cancel();
@@ -391,10 +395,10 @@ class MixinEos {
         let account = await this.getEosAccount();
         if (!account) {
             let ret = await Swal.fire({
-                title: '你还没有EOS账号，需要创建吗?',
+                title: tr("text_1"),
                 showDenyButton: true,
-                confirmButtonText: '确定',
-                denyButtonText: `取消`,
+                confirmButtonText: tr("Confirm"),
+                denyButtonText: tr("Cancel"),
                 allowOutsideClick: false,
                 allowEscapeKey: false,
             });
@@ -480,7 +484,7 @@ class MixinEos {
         try {
             const ret = await this._pushAction(account, actionName, data);
             if (ret) {
-                Swal.fire('付款成功!');
+                Swal.fire(tr("Payment successful!"));
             }
             await delay(1500);
             if (call_finish) {
@@ -526,7 +530,7 @@ class MixinEos {
             let memo = await this._buildMemo();
             let trace_id = v4();
             await this._requestTransferPayment(trace_id, asset_id, amount, memo);
-            Swal.fire('付款成功!');
+            Swal.fire(tr("Payment successful!"));
             await delay(1500);
             this.finish();
         } catch (e) {
@@ -557,10 +561,10 @@ class MixinEos {
         let account = await this.getEosAccount();
         if (!account) {
             let ret = await Swal.fire({
-                title: '你还没有EOS账号，需要创建吗?',
+                title: tr("text_1"),
                 showDenyButton: true,
-                confirmButtonText: '确定',
-                denyButtonText: `取消`,
+                confirmButtonText: tr("Confirm"),
+                denyButtonText: tr("Cancel"),
                 allowOutsideClick: false,
                 allowEscapeKey: false,
             });
