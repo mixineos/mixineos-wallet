@@ -2,6 +2,8 @@ import ReconnectingWebSocket from 'reconnecting-websocket';
 import pako from 'pako';
 import { v4 as uuidv4 } from 'uuid';
 
+declare let window: any;
+
 class Authorization {
     handled: boolean = false;
     endpoint: string = 'wss://blaze.mixin.one';
@@ -44,23 +46,27 @@ class Authorization {
         });
 
         this.ws.addEventListener('message', (event: any) => {
+            console.log("+++++++++message:", event.data)
             if (this.handled) {
                 return;
             }
-            const fileReader = new FileReader();
-            fileReader.onload = (evt: any) => {
-                const msg = pako.ungzip(new Uint8Array(evt.data), { to: 'string' });
+
+            event.data.arrayBuffer().then((value: any) => {
+                console.log("++++++value:", value);
+                const msg = pako.ungzip(value, { to: 'string' });
+                console.log("+++++msg:", msg);
                 const authorization = JSON.parse(msg);
+                console.log("+++++msg:", authorization);
                 if (callback(authorization)) {
                     this.handled = true;
                     return;
                 }
-                setTimeout(() => {
-                    const authorizationId = authorization.data ? authorization.data.authorization_id : '';
-                    this.sendRefreshCode(clientId, scope, codeChallenge, authorizationId);
-                }, 1000);
-            };
-            fileReader.readAsArrayBuffer(event.data);
+                // setTimeout(() => {
+                //     this.sendRefreshCode(clientId, scope, codeChallenge, authorization.data);
+                // }, 1000);
+            }).catch((err: any) => {
+                console.log("++++++++err:", err);
+            })
         });
 
         this.ws.addEventListener('open', (event: any) => {
