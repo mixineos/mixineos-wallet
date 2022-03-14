@@ -324,6 +324,7 @@ if (typeof window !== "undefined") {
 
 const InitWallet = ({
         node_url,
+        client_id,
         mainContract,
         mixinWrapTokenContract,
         contractProcessId,
@@ -348,6 +349,7 @@ const InitWallet = ({
 
     mixineos = new MixinEos({
         node_url: node_url,
+        client_id,
         mainContract,
         mixinWrapTokenContract,
         contractProcessId,
