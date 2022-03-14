@@ -135,7 +135,7 @@ class MixinEos {
         }
         const ret2 = await this._requestPayment(payment);
         if (ret2.error) {
-            throw new Error(ret2.error);
+            throw new Error(JSON.stringify(ret2));
         }
         return ret2.data;
     }
@@ -147,7 +147,7 @@ class MixinEos {
                 payment = await this.requestPayment(asset_id, amount, memo, trace_id);
                 break;
             } catch (e) {
-                console.error(e);
+                console.error("+++++payment error:", e);
             }
 
             if (this.isCanceled()) {
@@ -450,9 +450,6 @@ class MixinEos {
     }
     
     _pushAction = async (account: string, actionName: string, args: any) => {
-        if (account != this.mixinWrapTokenContract) {
-            throw Error(`Invalid account name ${account}`);
-        }
         let buffer = new SerialBuffer();
 
         buffer.pushName(account);
@@ -468,13 +465,23 @@ class MixinEos {
         let memo = await this._buildMemo(rawAction);
 
         let asset_id;
-        let quantity = args.quantity.split(' ');
-        let amount = quantity[0];
-        let trace_id = v4();
-        let symbol = quantity[1];
-        asset_id = assetMap[symbol];
-        if (!asset_id) {
-            throw Error(`Invalid Symbol ${symbol}`);
+        let quantity;
+        let amount;
+        let trace_id;
+
+        trace_id = v4();
+        if (account == this.mixinWrapTokenContract) {
+            let symbol;
+            quantity = args.quantity.split(' ');
+            amount = quantity[0];
+            symbol = quantity[1];
+            asset_id = assetMap[symbol];
+            if (!asset_id) {
+                throw Error(`Invalid Symbol ${symbol}`);
+            }
+        } else {
+            amount = "0.0001";
+            asset_id = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
         }
         return await this._requestTransferPayment(trace_id, asset_id, amount, memo);
     }
@@ -503,9 +510,9 @@ class MixinEos {
         }
 
         let action = tx.actions[0];
-        if (action.account != this.mixinWrapTokenContract) {
-            throw Error(`action account must be ${this.mixinWrapTokenContract}`);
-        }
+        // if (action.account != this.mixinWrapTokenContract) {
+        //     throw Error(`action account must be ${this.mixinWrapTokenContract}`);
+        // }
 
         if (action.authorization.length != 1) {
             throw Error("transaction can only contain one authorization.");
