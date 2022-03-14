@@ -7,6 +7,7 @@ export class OAuth {
     authorize(clientId: string, scope: string, codeChallenge: string, state: string) {
         const auth = new Authorization();
         auth.connect((resp: any) => {
+            console.log("+++++++++++data:", resp);
             if (resp.error) {
                 return;
             }
@@ -18,7 +19,7 @@ export class OAuth {
             console.log("+++++++++++data.authorization_code:", data.authorization_code);
             if (data.authorization_code.length > 16) {
                 // handle data.authorization_code here
-                return;
+                return true;
             }
             (async () => {
                 let qrcodeUrl = await QRCode.toDataURL('https://mixin.one/codes/' + data.code_id,);
@@ -39,6 +40,7 @@ export class OAuth {
             //     level: 'H',
             //     size: 500
             // });
+          return false
         }, clientId, scope, codeChallenge);
     }
 }

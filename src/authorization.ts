@@ -61,9 +61,9 @@ class Authorization {
                     this.handled = true;
                     return;
                 }
-                // setTimeout(() => {
-                //     this.sendRefreshCode(clientId, scope, codeChallenge, authorization.data);
-                // }, 1000);
+              setTimeout(() => {
+                this.sendRefreshCode(clientId, scope, codeChallenge, authorization.data.authorization_id);
+              }, 1000);
             }).catch((err: any) => {
                 console.log("++++++++err:", err);
             })
