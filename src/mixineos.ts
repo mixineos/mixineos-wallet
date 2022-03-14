@@ -420,7 +420,7 @@ class MixinEos {
 
         const scope = 'PROFILE:READ';
         const codeChallenge = generateChallenge();
-        this.authorize("d78a6e9e-5d23-4b24-8bf3-05dc8576cf8b", scope, codeChallenge, "")
+        this.authorize(this.client_id, scope, codeChallenge, "")
     }
 
     onAuth = async (authorizationCode: string) => {
