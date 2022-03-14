@@ -136,9 +136,9 @@ class ScatterEOS extends Plugin {
                     let returnedFields: any = null;
                     return (...args: any[]) => {
                         if (method == "transact") {
-                            return window.mixineos.pushTransaction(args[0]);
+                            return mixineos.pushTransaction(args[0]);
                         } else if (method == "transaction") {//eosjs v1
-                            return window.mixineos.pushTransaction(args[0]);
+                            return mixineos.pushTransaction(args[0]);
                         }
                         return new Promise((resolve, reject) => {
                             reject(false);
@@ -316,10 +316,11 @@ export class Index {
         return 0
     }
 }
-
-window.scatter = new Index();
-window.scatterBk = window.scatter;
-window.scatter.loadPlugin(new ScatterEOS());
+if (typeof window !== "undefined") {
+    window.scatter = new Index();
+    window.scatterBk = window.scatter;
+    window.scatter.loadPlugin(new ScatterEOS());    
+}
 
 const InitWallet = ({
         node_url,
