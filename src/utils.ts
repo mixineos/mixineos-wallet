@@ -32,14 +32,11 @@ const base64UrlEncodeUInt8Array = (arr: Uint8Array) => {
 }
 
 const generateChallenge = () => {
-    console.log("+++++++++++generateChallenge:",);
     var wordArray = CryptoJS.lib.WordArray.random(32);
     var verifier = base64URLEncode(wordArray);
     var challenge = base64URLEncode(CryptoJS.SHA256(wordArray));
     window.localStorage.setItem('verifier', verifier);
 
-    console.log("+++++++++++generateChallenge:", challenge, verifier);
-    alert(challenge + ":" + verifier);
     return challenge;
 }
 
