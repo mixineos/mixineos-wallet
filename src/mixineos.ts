@@ -417,6 +417,8 @@ class MixinEos {
                 window.location.replace(window.location.origin);
             }
         } else {
+            //Set UAL wallet type to Scatter
+            localStorage.setItem('UALLoggedInAuthType', 'Scatter');
             window.location.replace(window.location.origin);
         }
     }
