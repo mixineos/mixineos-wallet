@@ -1,28 +1,11 @@
-import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
-import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
-import { Api } from 'eosjs/dist/eosjs-api';
 import { MixinEos } from "./mixineos"
-import { NODE_URL } from "./constants"
 
-let CHAIN_ID = 'aca376f206b8fc25a6ed44dbdc66547c36c6c33e3a119ffbeaef943642f0e906'
-let jsonRpc = new JsonRpc(NODE_URL);
 let mixineos: MixinEos = null;
 
-const signatureProvider = new JsSignatureProvider([
-]);
-
 const PUBLIC_KEY = 'EOS7NqmJvt93T4y31b2Qba1sxoiTRR7Q3vQZwHjdPQh4gEq5BzaZ6'
-// const PUBLIC_KEY = 'EOS6GcXh1mgpGvmBWrF1wWQZxH7RWxF4TMnLQkbLMp2AYHfHJRdT2'
-
-const api = new Api({
-    rpc: jsonRpc, signatureProvider, chainId: CHAIN_ID, textDecoder: new TextDecoder(), textEncoder: new TextEncoder()
-});
 
 declare let window: any;
 declare let document: any;
-
-const toHexString = (bytes: any) =>
-    bytes.reduce((str: string, byte: number) => str + byte.toString(16).padStart(2, '0'), '');
 
 const BLOCKCHAIN_SUPPORT = 'blockchain_support';
 
@@ -124,9 +107,6 @@ class ScatterEOS extends Plugin {
     signatureProvider(...args: any[]) {
         const throwIfNoIdentity = args[0];
         return (network: Network, _eos: any, _options: any = {}) => {
-            var url = `${network.protocol}://${network.host}:${network.port}`
-            jsonRpc.endpoint = url;
-
             network = Network.fromJson(network);
             if (!network.isValid()) throw Error('noNetwork');
             const httpEndpoint = `${network.protocol}` + '://' + `${network.hostport()}`;
@@ -365,14 +345,10 @@ const InitWallet = ({
 
     (async () => {
         await mixineos.onLoad();
-        const info = await jsonRpc.get_info();
-        CHAIN_ID = info.chain_id;
         if (!inject) {
             return;
-        }
-        
+        }        
         console.log('+++++++++wallet v2 init done!!!');
-
     })();
     return mixineos;
 }

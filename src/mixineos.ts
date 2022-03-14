@@ -21,7 +21,6 @@ import {
 import {
     CHAIN_ID,
     OAUTH_URL,
-    DEBUG_SIGNER_NODES
 } from "./constants";
 
 
@@ -91,7 +90,6 @@ class MixinEos {
         this.show_qrcode = false;
         this.start = false;
 
-        this.signer_urls = null;
         this.debug = debug;
         changeLang(lang);
 
@@ -253,11 +251,6 @@ class MixinEos {
         this.start = true;
         this.payment_canceled = false;
         this.signers = this.members;
-        if (this.debug) {
-            this.signer_urls = DEBUG_SIGNER_NODES;
-        } else {
-            this.signer_urls = this.signers.map((x: any) => x.url);
-        }
     }
 
     cancel = () => {
