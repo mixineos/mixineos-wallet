@@ -58,7 +58,6 @@ class MixinEos {
 
     constructor({
         node_url,
-        client_id,
         mainContract,
         mixinWrapTokenContract,
         contractProcessId,
@@ -67,7 +66,6 @@ class MixinEos {
         debug = false
     } : {
         node_url: string;
-        client_id: string;
         mainContract: string;
         mixinWrapTokenContract: string;
         contractProcessId: string;
@@ -83,7 +81,6 @@ class MixinEos {
         });
         this.threshold = 0;
         this.payment_canceled = false;
-        this.client_id = client_id;
         this.mainContract = mainContract;
         this.mixinWrapTokenContract = mixinWrapTokenContract;
         this.contractProcessId = contractProcessId;
