@@ -324,7 +324,6 @@ if (typeof window !== "undefined") {
 
 const InitWallet = ({
         node_url,
-        client_id,
         mainContract,
         mixinWrapTokenContract,
         contractProcessId,

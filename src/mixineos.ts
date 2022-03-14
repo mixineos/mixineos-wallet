@@ -7,6 +7,7 @@ import { v4 } from 'uuid';
 import Swal from 'sweetalert2'
 import * as QRCode from 'qrcode'
 import { tr, changeLang } from "./lang"
+import Authorization from './authorization';
 
 import {
     replaceAll,
@@ -95,6 +96,58 @@ class MixinEos {
         changeLang(lang);
 
         this.isRequestingAuthorization = false;
+    }
+
+    codeId: string = "";
+    authFinished: boolean = false;
+    authorize(clientId: string, scope: string, codeChallenge: string, state: string) {
+        this.authFinished = false;
+        const auth = new Authorization();
+        auth.connect((resp: any) => {
+            if (this.authFinished) {
+                return true;
+            }
+
+            if (resp.error) {
+                return false;
+            }
+
+            const data = resp.data;
+            if (!data) {
+                return false;
+            }
+
+            if (data.authorization_code.length > 16) {
+                // handle data.authorization_code here
+                this.onAuth(data.authorization_code);
+                return true;
+            }
+
+            if (this.codeId == data.code_id) {
+                return false;
+            }
+            this.codeId = data.code_id;
+
+            let url = 'https://mixin.one/codes/' + data.code_id;
+            if (mobileAndTabletCheck()) {
+                window.open(url, "_blank");
+            } else {
+                (async () => {
+                    console.log("++++++++url:", url);
+                    let qrcodeUrl = await QRCode.toDataURL(url);
+                    let ret = await Swal.fire({
+                        text: tr("Use Mixin on your phone to scan the code"),
+                        imageUrl: qrcodeUrl,
+                        showConfirmButton: true,
+                        confirmButtonText: tr("Cancel"),
+                    });
+                    if (ret.isDismissed || ret.isConfirmed) {
+                        this.authFinished = true;
+                    }
+                })();
+            }
+          return false
+        }, clientId, scope, codeChallenge);
     }
 
     _requestPayment = async (payment: any) => {
@@ -234,6 +287,7 @@ class MixinEos {
             imageAlt: 'image',
             allowOutsideClick: false,
             allowEscapeKey: false,
+            confirmButtonText: tr("Cancel"),
         })
     }
 
@@ -353,21 +407,23 @@ class MixinEos {
         this.isRequestingAuthorization = true;
 
 
-        localStorage.setItem('href_save', window.location.href);
-        const scope = 'PROFILE:READ';
-        const challenge = generateChallenge();
-        const url = `https://mixin-www.zeromesh.net/oauth/authorize?client_id=${this.client_id}&scope=${scope}&response_type=code&code_challenge=${challenge}`;
-        window.location.replace(url);
+        // localStorage.setItem('href_save', window.location.href);
+        // const scope = 'PROFILE:READ';
+        // const challenge = generateChallenge();
+        // const url = `https://mixin-www.zeromesh.net/oauth/authorize?client_id=${this.client_id}&scope=${scope}&response_type=code&code_challenge=${challenge}`;
+        // window.location.replace(url);
 
-        while (true) {
-            console.log('zzz...');
-            await delay(1000);
-        }
+        // while (true) {
+        //     console.log('zzz...');
+        //     await delay(1000);
+        // }
+
+        const scope = 'PROFILE:READ';
+        const codeChallenge = generateChallenge();
+        this.authorize("d78a6e9e-5d23-4b24-8bf3-05dc8576cf8b", scope, codeChallenge, "")
     }
 
-    onAuth = async () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const authorizationCode = urlParams.get('code');
+    onAuth = async (authorizationCode: string) => {
         if (!authorizationCode) {
             console.log("+++++++=bad request");
             return;
@@ -390,6 +446,9 @@ class MixinEos {
         if (!ret2.data) {
             await this.requestAuthorization();
         }
+
+        Swal.close();
+
         localStorage.setItem('access_token', ret2.data.access_token);
         await this._getUserId();
         let account = await this.getEosAccount();
@@ -559,7 +618,9 @@ class MixinEos {
 
     onLoad = async () => {
         if (window.location.pathname === '/auth') {
-            return await this.onAuth();
+            const urlParams = new URLSearchParams(window.location.search);
+            const authorizationCode = urlParams.get('code');    
+            return await this.onAuth(authorizationCode);
         }
 
         const user_id = await this.getUserId();

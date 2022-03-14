@@ -3,6 +3,7 @@ export type Item = {
 }
 
 const lang_en: Item = {
+    "Use Mixin on your phone to scan the code": "Use Mixin on your phone to scan the code",
     "Awaiting confirmation...": "Awaiting confirmation...",
     "Confirm": 'Confirm',
     "Cancel": "Cancel",
@@ -11,6 +12,7 @@ const lang_en: Item = {
 }
 
 const lang_cn: Item = {
+    "Use Mixin on your phone to scan the code": "请用手机版Mixin扫二维码进行授权",
     "Awaiting confirmation...": "'正在等待确认...'",
     "Confirm": '确定',
     "Cancel": "取消",

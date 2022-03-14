@@ -1,5 +1,5 @@
 import ReconnectingWebSocket from 'reconnecting-websocket';
-import pako from 'pako';
+import * as pako from 'pako';
 import { v4 as uuidv4 } from 'uuid';
 
 declare let window: any;
@@ -52,18 +52,15 @@ class Authorization {
             }
 
             event.data.arrayBuffer().then((value: any) => {
-                console.log("++++++value:", value);
                 const msg = pako.ungzip(value, { to: 'string' });
-                console.log("+++++msg:", msg);
                 const authorization = JSON.parse(msg);
-                console.log("+++++msg:", authorization);
                 if (callback(authorization)) {
                     this.handled = true;
                     return;
                 }
-              setTimeout(() => {
-                this.sendRefreshCode(clientId, scope, codeChallenge, authorization.data.authorization_id);
-              }, 1000);
+                setTimeout(() => {
+                    this.sendRefreshCode(clientId, scope, codeChallenge, authorization.data.authorization_id);
+              }, 1500);
             }).catch((err: any) => {
                 console.log("++++++++err:", err);
             })
