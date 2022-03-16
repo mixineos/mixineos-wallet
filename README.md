@@ -22,8 +22,10 @@ const members = [
     "49b00892-6954-4826-aaec-371ca165558a"
 ];
 
-let mixineos = InitWallet({
-  node_url: "https://api.eosn.io",
+InitWallet({
+  eosRpcUrl: "https://api.eosn.io",
+  dataProvider: null,
+  appId: "d78a6e9e-5d23-4b24-8bf3-05dc8576cf8b",
   mainContract: "mixincrossss",
   mixinWrapTokenContract: "mixinwtokens",
   contractProcessId: "e0148fc6-0e10-470e-8127-166e0829c839",
