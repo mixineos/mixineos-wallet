@@ -351,7 +351,7 @@ const InitWallet = ({
         await mixineos.onLoad();
         if (!inject) {
             return;
-        }        
+        }
         console.log('+++++++++wallet v2 init done!!!');
     })();
     return mixineos;

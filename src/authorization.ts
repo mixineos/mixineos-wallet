@@ -46,7 +46,6 @@ class Authorization {
         });
 
         this.ws.addEventListener('message', (event: any) => {
-            console.log("+++++++++message:", event.data)
             if (this.handled) {
                 return;
             }

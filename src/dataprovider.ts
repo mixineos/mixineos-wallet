@@ -8,8 +8,8 @@ import { CHAIN_ID } from "./constants"
 import { delay } from "./utils";
 
 interface DataProvider {
-    get(hash: string): Promise<string>
-    post(nonce: number, data: Uint8Array): Promise<boolean>
+    pull(hash: string): Promise<string>
+    push(nonce: number, data: Uint8Array): Promise<boolean>
     getDataUrl(data: Uint8Array): Promise<string>
 }
 
@@ -25,11 +25,11 @@ class ExtraDataProvider implements DataProvider {
         this.dataServerUrl = dataServerUrl;
     }
 
-    async get(hash: string) {
+    async pull(hash: string) {
         return "";
     }
 
-    async post(nonce: number, data: Uint8Array) {
+    async push(nonce: number, data: Uint8Array) {
         let body = JSON.stringify({
             nonce: nonce,
             extra: arrayToHex(data)
