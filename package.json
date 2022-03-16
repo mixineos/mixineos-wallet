@@ -1,6 +1,6 @@
 {
   "name": "mixineos-wallet",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "MixinEos Multisig Wallet",
   "main": "dist/index.js",
   "scripts": {
@@ -31,6 +31,7 @@
     "eosjs": "^21.0.4",
     "qrcode": "^1.4.4",
     "reconnecting-websocket": "^4.4.0",
+    "sha256-uint8array": "^0.10.3",
     "sweetalert2": "^11.4.4",
     "uuid": "^8.3.2",
     "uuidv4": "^6.2.7"

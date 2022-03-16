@@ -2,12 +2,15 @@ import { Api } from 'eosjs/dist/eosjs-api';
 import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
 import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
 import { binaryToDecimal } from 'eosjs/dist/eosjs-numeric'
-import { SerialBuffer, serializeActionData, hexToUint8Array } from 'eosjs/dist/eosjs-serialize'
+import { SerialBuffer, serializeActionData, arrayToHex, hexToUint8Array } from 'eosjs/dist/eosjs-serialize'
+import { createHash } from "sha256-uint8array"
 import { v4 } from 'uuid';
 import Swal from 'sweetalert2'
 import * as QRCode from 'qrcode'
+
 import { tr, changeLang } from "./lang"
 import Authorization from './authorization';
+import { DataProvider, ExtraDataProvider } from "./dataprovider"
 
 import {
     replaceAll,
@@ -39,10 +42,11 @@ export const assetMap: Item = {
 class MixinEos {
     api: Api;
     jsonRpc: JsonRpc;
+    dataProvider: DataProvider;
     threshold: number;
     signers: any;
     payment_canceled: boolean;
-    client_id: string;
+    appId: string;
     mainContract: string;
     mixinWrapTokenContract: string;
     contractProcessId: string;
@@ -56,8 +60,9 @@ class MixinEos {
     isRequestingAuthorization: boolean;
 
     constructor({
-        node_url,
-        client_id,
+        eosRpcUrl,
+        dataProvider,
+        appId,
         mainContract,
         mixinWrapTokenContract,
         contractProcessId,
@@ -65,8 +70,9 @@ class MixinEos {
         lang,
         debug = false
     } : {
-        node_url: string;
-        client_id: string;
+        eosRpcUrl: string;
+        dataProvider: DataProvider | null;
+        appId: string;
         mainContract: string;
         mixinWrapTokenContract: string;
         contractProcessId: string;
@@ -76,13 +82,14 @@ class MixinEos {
     }) {
         const signatureProvider = new JsSignatureProvider([]);
         
-        this.jsonRpc = new JsonRpc(node_url);
+        this.jsonRpc = new JsonRpc(eosRpcUrl);
+        this.dataProvider = dataProvider;
         this.api = new Api({
             rpc: this.jsonRpc, signatureProvider, chainId: CHAIN_ID, textDecoder: new TextDecoder(), textEncoder: new TextEncoder()
         });
         this.threshold = 0;
         this.payment_canceled = false;
-        this.client_id = client_id;
+        this.appId = appId;
         this.mainContract = mainContract;
         this.mixinWrapTokenContract = mixinWrapTokenContract;
         this.contractProcessId = contractProcessId;
@@ -413,7 +420,7 @@ class MixinEos {
 
         const scope = 'PROFILE:READ';
         const codeChallenge = generateChallenge();
-        this.authorize(this.client_id, scope, codeChallenge, "")
+        this.authorize(this.appId, scope, codeChallenge, "")
     }
 
     onAuth = async (authorizationCode: string) => {
@@ -422,7 +429,7 @@ class MixinEos {
             return;
         }
         var args = {
-            "client_id": this.client_id,
+            "client_id": this.appId,
             "code": authorizationCode,
             "code_verifier": localStorage.getItem("verifier")
         };
@@ -475,7 +482,7 @@ class MixinEos {
         }
     }
 
-    _buildMemo = async (extra: Uint8Array | null = null) => {
+    _buildMemo = (extra: Uint8Array | null = null) => {
         let array = new Uint8Array(1024);
         let length = 0;
         
@@ -500,23 +507,41 @@ class MixinEos {
         } else {
             buffer.push(0, 0);
         }
-        return base64UrlEncodeUInt8Array(buffer.asUint8Array());
+        return buffer.asUint8Array()
     }
-    
+
+    _buildMemoBase64 = (data: Uint8Array | null = null) => {
+        let memo = this._buildMemo(data)
+        return base64UrlEncodeUInt8Array(memo);
+    }
+
     _pushAction = async (account: string, actionName: string, args: any) => {
         let buffer = new SerialBuffer();
-
+        buffer.push(0) //data type: original
         buffer.pushName(account);
         buffer.pushName(actionName);
 
-        // this.jsonRpc.
         const contract = await this.api.getContract(account);
 
         let hexData = serializeActionData(contract, account, actionName, args, buffer.textEncoder, buffer.textDecoder);
         let rawData = hexToUint8Array(hexData);
         buffer.pushArray(rawData);
         let rawAction = buffer.asUint8Array();
-        let memo = await this._buildMemo(rawAction);
+        let originMemo = this._buildMemo(rawAction);
+        let memoBase64 = base64UrlEncodeUInt8Array(originMemo);
+        let extraExceedLimit = false;
+        if (memoBase64.length > 200) {
+            extraExceedLimit = true;
+            let memoBuffer = new SerialBuffer();
+            memoBuffer.push(1) //data type: provided by data source
+            const hash = createHash().update(originMemo).digest();
+            memoBuffer.pushArray(hash);
+            let enc = new TextEncoder();
+            let rawUrl = enc.encode(await this.dataProvider.getDataUrl(originMemo));
+            memoBuffer.pushArray(rawUrl)
+            let newMemo = this._buildMemo(memoBuffer.asUint8Array());
+            memoBase64 = base64UrlEncodeUInt8Array(newMemo);
+        }
 
         let asset_id;
         let quantity;
@@ -537,7 +562,33 @@ class MixinEos {
             amount = "0.0001";
             asset_id = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
         }
-        return await this._requestTransferPayment(trace_id, asset_id, amount, memo);
+
+        let ret = await this._requestTransferPayment(trace_id, asset_id, amount, memoBase64);
+        if (extraExceedLimit) {
+            for (var i=0; i<20; i++) {
+                var params = {
+                    json: true,
+                    code: this.mainContract,
+                    scope: this.mainContract,
+                    table: 'pendingevts',
+                    lower_bound: this.getEosAccount,
+                    upper_bound: this.getEosAccount,
+                    limit: 10,
+                    key_type: 'i64',
+                    index_position: '2',
+                    reverse :  false,
+                    show_payer :  false
+                }
+                var r = await this.jsonRpc.get_table_rows(params);
+                console.log("++++pendingevts:", r);
+                if (r.rows.length != 0) {
+                    this.dataProvider.post(r.rows[0].event.nonce, originMemo)
+                    break;
+                }
+                await delay(3000);
+            }
+        }
+        return ret
     }
 
     pushAction = async (account: string, actionName: string, data: any, call_finish: boolean=true) => {
@@ -588,7 +639,7 @@ class MixinEos {
         try {
             let asset_id = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
             let amount = "0.0886";
-            let memo = await this._buildMemo();
+            let memo = await this._buildMemoBase64();
             let trace_id = v4();
             await this._requestTransferPayment(trace_id, asset_id, amount, memo);
             Swal.fire(tr("Payment successful!"));

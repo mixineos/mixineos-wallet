@@ -1,4 +1,5 @@
 import { MixinEos } from "./mixineos"
+import { DataProvider, ExtraDataProvider } from "./dataprovider"
 
 let mixineos: MixinEos = null;
 
@@ -303,8 +304,9 @@ if (typeof window !== "undefined") {
 }
 
 const InitWallet = ({
-        node_url,
-        client_id,
+        eosRpcUrl,
+        dataProvider,
+        appId,
         mainContract,
         mixinWrapTokenContract,
         contractProcessId,
@@ -313,8 +315,9 @@ const InitWallet = ({
         debug = false,
         inject = false
     } : {
-        node_url: string,
-        client_id: string,
+        eosRpcUrl: string,
+        dataProvider: DataProvider,
+        appId: string,
         mainContract: string,
         mixinWrapTokenContract: string,
         contractProcessId: string,
@@ -328,8 +331,9 @@ const InitWallet = ({
     }
 
     mixineos = new MixinEos({
-        node_url: node_url,
-        client_id,
+        eosRpcUrl: eosRpcUrl,
+        dataProvider,
+        appId,
         mainContract,
         mixinWrapTokenContract,
         contractProcessId,
@@ -353,4 +357,4 @@ const InitWallet = ({
     return mixineos;
 }
 
-export { InitWallet };
+export { InitWallet, DataProvider, ExtraDataProvider};
