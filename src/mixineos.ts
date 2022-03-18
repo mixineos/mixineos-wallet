@@ -10,7 +10,7 @@ import * as QRCode from 'qrcode'
 
 import { tr, changeLang } from "./lang"
 import Authorization from './authorization';
-import { DataProvider, ExtraDataProvider } from "./dataprovider"
+import { DataProvider, EosExtraDataProvider } from "./dataprovider"
 
 import {
     replaceAll,
@@ -477,7 +477,7 @@ class MixinEos {
             }
         } else {
             //Set UAL wallet type to Scatter
-            localStorage.setItem('UALLoggedInAuthType', 'Scatter');
+            // localStorage.setItem('UALLoggedInAuthType', 'Scatter');
             window.location.replace(window.location.origin);
         }
     }
@@ -582,8 +582,11 @@ class MixinEos {
                 var r = await this.jsonRpc.get_table_rows(params);
                 console.log("++++pendingevts:", r);
                 if (r.rows.length != 0) {
-                    this.dataProvider.post(r.rows[0].event.nonce, originMemo)
+                    this.dataProvider.push(r.rows[0].event.nonce, originMemo)
                     break;
+                }
+                if (this.isCanceled()) {
+                    throw new Error('canceled');
                 }
                 await delay(3000);
             }

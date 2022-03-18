@@ -1,5 +1,5 @@
 import { MixinEos } from "./mixineos"
-import { DataProvider, ExtraDataProvider } from "./dataprovider"
+import { DataProvider, EosExtraDataProvider, HttpExtraDataProvider } from "./dataprovider"
 
 let mixineos: MixinEos = null;
 
@@ -348,13 +348,13 @@ const InitWallet = ({
     document.dispatchEvent(new CustomEvent('scatterLoaded'));
 
     (async () => {
-        await mixineos.onLoad();
         if (!inject) {
             return;
         }
+        await mixineos.onLoad();
         console.log('+++++++++wallet v2 init done!!!');
     })();
     return mixineos;
 }
 
-export { InitWallet, DataProvider, ExtraDataProvider};
+export { InitWallet, DataProvider, EosExtraDataProvider, HttpExtraDataProvider};

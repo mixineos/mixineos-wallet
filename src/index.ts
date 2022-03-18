@@ -1,4 +1,4 @@
-import { InitWallet, ExtraDataProvider } from './mixineos-wallet';
+import { InitWallet, EosExtraDataProvider, HttpExtraDataProvider } from './mixineos-wallet';
 import { MixinEos } from './mixineos';
 
-export { InitWallet, ExtraDataProvider, MixinEos };
+export { InitWallet, EosExtraDataProvider, HttpExtraDataProvider, MixinEos };

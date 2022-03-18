@@ -1,19 +1,12 @@
-import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
-import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
-import { Api } from 'eosjs/dist/eosjs-api';
-import { arrayToHex, hexToUint8Array } from 'eosjs/dist/eosjs-serialize'
-import { binaryToDecimal } from 'eosjs/dist/eosjs-numeric'
+import { arrayToHex } from 'eosjs/dist/eosjs-serialize'
 import { createHash } from "sha256-uint8array"
-import { CHAIN_ID } from "./constants"
-import { delay } from "./utils";
 
 interface DataProvider {
-    pull(hash: string): Promise<string>
     push(nonce: number, data: Uint8Array): Promise<boolean>
     getDataUrl(data: Uint8Array): Promise<string>
 }
 
-class ExtraDataProvider implements DataProvider {
+class HttpExtraDataProvider implements DataProvider {
     dataServerUrl: string;
 
     constructor({
@@ -25,8 +18,42 @@ class ExtraDataProvider implements DataProvider {
         this.dataServerUrl = dataServerUrl;
     }
 
-    async pull(hash: string) {
-        return "";
+    async push(nonce: number, data: Uint8Array) {
+        let body = JSON.stringify({
+            nonce: nonce,
+            extra: arrayToHex(data)
+        });
+        const r = await fetch(`${this.dataServerUrl}/push`, {
+            method: "POST",
+            headers: {
+                "Content-type": "application/json",
+            },
+            body: body,
+        });
+        let r2 = await r.json();
+        if (r2.data) {
+            return true
+        }
+        return false
+    }
+
+    async getDataUrl(data: Uint8Array) {
+        const hash = createHash().update(data).digest();
+        let h = arrayToHex(hash);
+        return `${this.dataServerUrl}/pull`
+    }
+}
+
+class EosExtraDataProvider implements DataProvider {
+    dataServerUrl: string;
+
+    constructor({
+        dataServerUrl,
+    }:
+    {
+        dataServerUrl: string
+    }) {
+        this.dataServerUrl = dataServerUrl;
     }
 
     async push(nonce: number, data: Uint8Array) {
@@ -55,4 +82,4 @@ class ExtraDataProvider implements DataProvider {
     }
 }
 
-export { DataProvider, ExtraDataProvider }
+export { DataProvider, EosExtraDataProvider, HttpExtraDataProvider }
