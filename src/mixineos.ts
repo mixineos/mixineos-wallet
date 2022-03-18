@@ -1,10 +1,10 @@
 import { Api } from 'eosjs/dist/eosjs-api';
 import { JsSignatureProvider } from "eosjs/dist/eosjs-jssig";
 import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
-import { binaryToDecimal } from 'eosjs/dist/eosjs-numeric'
+import { binaryToDecimal, decimalToBinary } from 'eosjs/dist/eosjs-numeric'
 import { SerialBuffer, serializeActionData, arrayToHex, hexToUint8Array } from 'eosjs/dist/eosjs-serialize'
 import { createHash } from "sha256-uint8array"
-import { v4 } from 'uuid';
+import { v4, stringify } from 'uuid';
 import Swal from 'sweetalert2'
 import * as QRCode from 'qrcode'
 
@@ -177,14 +177,14 @@ class MixinEos {
         return ret;
     }
 
-    requestPayment = async (asset_id: string, amount: string, memo: string, trace_id: string = "") => {
-        if (!trace_id) {
-            trace_id = v4();
+    requestPayment = async (asset_id: string, amount: string, memo: string, traceId: string = "") => {
+        if (!traceId) {
+            traceId = v4();
         }
         var payment = {
             "asset_id": asset_id,
             "amount": amount,
-            "trace_id": trace_id,
+            "trace_id": traceId,
             "memo": memo,
             "opponent_multisig": {
                 "receivers": this.members,
@@ -198,11 +198,11 @@ class MixinEos {
         return ret2.data;
     }
 
-    _requestTransferPayment = async (trace_id: string, asset_id: string, amount: string, memo: string) => {
+    _requestTransferPayment = async (traceId: string, asset_id: string, amount: string, memo: string) => {
         let payment: any = null;
         for (var i=0;i<3;i++) {
             try {
-                payment = await this.requestPayment(asset_id, amount, memo, trace_id);
+                payment = await this.requestPayment(asset_id, amount, memo, traceId);
                 break;
             } catch (e) {
                 console.error("+++++payment error:", e);
@@ -235,7 +235,7 @@ class MixinEos {
             if (this.isCanceled()) {
                 return false;
             }
-            payment = await this.requestPayment(asset_id, amount, memo, trace_id);
+            payment = await this.requestPayment(asset_id, amount, memo, traceId);
             if (payment.error) {
                 continue;
             }
@@ -515,6 +515,28 @@ class MixinEos {
         return base64UrlEncodeUInt8Array(memo);
     }
 
+    getAssetId = async (symbol: string) => {
+        var params = {
+            json: true,
+            code: this.mainContract,
+            scope: this.mainContract,
+            table: 'mixinassets',
+            lower_bound: symbol,
+            upper_bound: symbol,
+            limit: 10,
+            key_type: 'i64',
+            index_position: '1',
+            reverse :  false,
+            show_payer :  false
+        }
+        var r = await this.jsonRpc.get_table_rows(params);
+        if (r.rows.length == 0) {
+            return null
+        }
+        let assetId = decimalToBinary(16, r.rows[0].asset_id);
+        return stringify(assetId);
+    }
+
     _pushAction = async (account: string, actionName: string, args: any) => {
         let buffer = new SerialBuffer();
         buffer.push(0) //data type: original
@@ -543,27 +565,31 @@ class MixinEos {
             memoBase64 = base64UrlEncodeUInt8Array(newMemo);
         }
 
-        let asset_id;
+        let assetId;
         let quantity;
         let amount;
-        let trace_id;
+        let traceId;
 
-        trace_id = v4();
+        traceId = v4();
         if (account == this.mixinWrapTokenContract) {
             let symbol;
             quantity = args.quantity.split(' ');
             amount = quantity[0];
             symbol = quantity[1];
-            asset_id = assetMap[symbol];
-            if (!asset_id) {
-                throw Error(`Invalid Symbol ${symbol}`);
+            assetId = assetMap[symbol];
+            if (!assetId) {
+                assetId = await this.getAssetId(symbol);
+                if (!assetId) {
+                    throw Error(`Invalid Symbol ${symbol}`);
+                }
+                assetMap[symbol] = assetId;
             }
         } else {
             amount = "0.0001";
-            asset_id = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
+            assetId = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
         }
 
-        let ret = await this._requestTransferPayment(trace_id, asset_id, amount, memoBase64);
+        let ret = await this._requestTransferPayment(traceId, assetId, amount, memoBase64);
         if (extraExceedLimit) {
             for (var i=0; i<20; i++) {
                 var params = {
@@ -580,7 +606,6 @@ class MixinEos {
                     show_payer :  false
                 }
                 var r = await this.jsonRpc.get_table_rows(params);
-                console.log("++++pendingevts:", r);
                 if (r.rows.length != 0) {
                     this.dataProvider.push(r.rows[0].event.nonce, originMemo)
                     break;
@@ -643,8 +668,8 @@ class MixinEos {
             let asset_id = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
             let amount = "0.0886";
             let memo = await this._buildMemoBase64();
-            let trace_id = v4();
-            await this._requestTransferPayment(trace_id, asset_id, amount, memo);
+            let traceId = v4();
+            await this._requestTransferPayment(traceId, asset_id, amount, memo);
             Swal.fire(tr("Payment successful!"));
             await delay(1500);
             this.finish();
