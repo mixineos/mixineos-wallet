@@ -4,7 +4,7 @@ import { JsonRpc } from "eosjs/dist/eosjs-jsonrpc";
 import { binaryToDecimal, decimalToBinary } from 'eosjs/dist/eosjs-numeric'
 import { SerialBuffer, serializeActionData, arrayToHex, hexToUint8Array } from 'eosjs/dist/eosjs-serialize'
 import { createHash } from "sha256-uint8array"
-import { v4, stringify } from 'uuid';
+import * as uuid from 'uuid';
 import Swal from 'sweetalert2'
 import * as QRCode from 'qrcode'
 
@@ -155,6 +155,23 @@ class MixinEos {
         }, clientId, scope, codeChallenge);
     }
 
+    getTableRows = async (table: string, lowerBound: string, upperBound: string, limit: number=1, keyType: string = "i64", indexPosition: string="1") => {
+        var params = {
+            json: true,
+            code: this.mainContract,
+            scope: this.mainContract,
+            table: table,
+            lower_bound: lowerBound,
+            upper_bound: upperBound,
+            limit: limit,
+            key_type: keyType,
+            index_position: indexPosition,
+            reverse :  false,
+            show_payer :  false
+        }
+        return await this.jsonRpc.get_table_rows(params);
+    }
+
     _requestPayment = async (payment: any) => {
         let ret: any;
         const paymentUrl = 'https://mixin-api.zeromesh.net/payments';
@@ -163,7 +180,7 @@ class MixinEos {
             headers: {
                 "Content-type": "application/json",
                 'Authorization' : 'Bearer ' + await this.getAccessToken(),
-                // "X-Request-Id": v4()
+                // "X-Request-Id": uuid.v4()
             },
             body: JSON.stringify(payment),
         });
@@ -179,7 +196,7 @@ class MixinEos {
 
     requestPayment = async (asset_id: string, amount: string, memo: string, traceId: string = "") => {
         if (!traceId) {
-            traceId = v4();
+            traceId = uuid.v4();
         }
         var payment = {
             "asset_id": asset_id,
@@ -358,21 +375,7 @@ class MixinEos {
     _getBindAccount = async (user_id: string) => {
         const _user_id = replaceAll(user_id, "-", "");
         let user_id_dec = binaryToDecimal(fromHexString(_user_id));
-        var params = {
-            json: true,
-            code: this.mainContract,
-            scope: this.mainContract,
-            table: 'bindaccounts',
-            lower_bound: user_id_dec,
-            upper_bound: user_id_dec,
-            limit: 1,
-            key_type: 'i128',
-            index_position: '2',
-            reverse :  false,
-            show_payer :  false
-        }
-        var r = await this.jsonRpc.get_table_rows(params);
-    
+        let r = await this.getTableRows('bindaccounts', user_id_dec, user_id_dec, 1, 'i128', '2');    
         if (r.rows.length !== 0) {
             const account = r.rows[0].eos_account;
             localStorage.setItem('binded_account', account);
@@ -516,25 +519,20 @@ class MixinEos {
     }
 
     getAssetId = async (symbol: string) => {
-        var params = {
-            json: true,
-            code: this.mainContract,
-            scope: this.mainContract,
-            table: 'mixinassets',
-            lower_bound: symbol,
-            upper_bound: symbol,
-            limit: 10,
-            key_type: 'i64',
-            index_position: '1',
-            reverse :  false,
-            show_payer :  false
-        }
-        var r = await this.jsonRpc.get_table_rows(params);
+        let r = await this.getTableRows('mixinassets', symbol, symbol)
         if (r.rows.length == 0) {
             return null
         }
         let assetId = decimalToBinary(16, r.rows[0].asset_id);
-        return stringify(assetId);
+        return uuid.stringify(assetId);
+    }
+
+    getTransferFee = async (symbol: string) => {
+        let ret = await this.getTableRows('transferfees', symbol, symbol, 1)
+        if (ret.rows.length == 0) {
+            return 0.0;
+        }
+        return parseFloat(ret.rows[0].fee.split(' ')[0])
     }
 
     _pushAction = async (account: string, actionName: string, args: any) => {
@@ -570,13 +568,15 @@ class MixinEos {
         let amount;
         let traceId;
 
-        traceId = v4();
+        traceId = uuid.v4();
         if (account == this.mixinWrapTokenContract) {
             let symbol;
             quantity = args.quantity.split(' ');
             amount = quantity[0];
             symbol = quantity[1];
             assetId = assetMap[symbol];
+            let fee = await this.getTransferFee(symbol);
+            amount = (parseFloat(amount) + fee).toFixed(8)
             if (!assetId) {
                 assetId = await this.getAssetId(symbol);
                 if (!assetId) {
@@ -585,27 +585,19 @@ class MixinEos {
                 assetMap[symbol] = assetId;
             }
         } else {
-            amount = "0.0001";
+            let fee = await this.getTransferFee("MEOS")
+            amount = fee.toString();
             assetId = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
         }
 
         let ret = await this._requestTransferPayment(traceId, assetId, amount, memoBase64);
         if (extraExceedLimit) {
+            let account = await this.getEosAccount();
             for (var i=0; i<20; i++) {
-                var params = {
-                    json: true,
-                    code: this.mainContract,
-                    scope: this.mainContract,
-                    table: 'pendingevts',
-                    lower_bound: this.getEosAccount,
-                    upper_bound: this.getEosAccount,
-                    limit: 10,
-                    key_type: 'i64',
-                    index_position: '2',
-                    reverse :  false,
-                    show_payer :  false
+                let r = await this.getTableRows('pendingevts', account, account, 10, 'i64', '2')
+                if (this.debug) {
+                    console.log(r);
                 }
-                var r = await this.jsonRpc.get_table_rows(params);
                 if (r.rows.length != 0) {
                     this.dataProvider.push(r.rows[0].event.nonce, originMemo)
                     break;
@@ -668,7 +660,7 @@ class MixinEos {
             let asset_id = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
             let amount = "0.0886";
             let memo = await this._buildMemoBase64();
-            let traceId = v4();
+            let traceId = uuid.v4();
             await this._requestTransferPayment(traceId, asset_id, amount, memo);
             Swal.fire(tr("Payment successful!"));
             await delay(1500);
