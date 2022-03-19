@@ -590,24 +590,27 @@ class MixinEos {
             assetId = "6cfe566e-4aad-470b-8c9a-2fd35b49c68d";
         }
 
-        let ret = await this._requestTransferPayment(traceId, assetId, amount, memoBase64);
         if (extraExceedLimit) {
-            let account = await this.getEosAccount();
-            for (var i=0; i<20; i++) {
-                let r = await this.getTableRows('pendingevts', account, account, 10, 'i64', '2')
-                if (this.debug) {
-                    console.log(r);
-                }
-                if (r.rows.length != 0) {
-                    this.dataProvider.push(r.rows[0].event.nonce, originMemo)
-                    break;
-                }
-                if (this.isCanceled()) {
-                    throw new Error('canceled');
-                }
-                await delay(3000);
-            }
+            await this.dataProvider.push(0, originMemo);
         }
+        let ret = await this._requestTransferPayment(traceId, assetId, amount, memoBase64);
+        // if (extraExceedLimit) {
+        //     let account = await this.getEosAccount();
+        //     for (var i=0; i<20; i++) {
+        //         let r = await this.getTableRows('pendingevts', account, account, 10, 'i64', '2')
+        //         if (this.debug) {
+        //             console.log(r);
+        //         }
+        //         if (r.rows.length != 0) {
+        //             this.dataProvider.push(r.rows[0].event.nonce, originMemo)
+        //             break;
+        //         }
+        //         if (this.isCanceled()) {
+        //             throw new Error('canceled');
+        //         }
+        //         await delay(3000);
+        //     }
+        // }
         return ret
     }
 
